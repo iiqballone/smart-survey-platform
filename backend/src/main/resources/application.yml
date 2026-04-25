@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: surveybridge-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surveybridge}
+    username: ${DATABASE_USER:surveybridge}
+    password: ${DATABASE_PASSWORD:surveybridge}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/surveybridge-dev}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: surveybridge-response-consumer
+      auto-offset-reset: earliest
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+server:
+  port: 8080
+
+dynata:
+  api-key: ${DYNATA_API_KEY}
+  webhook-secret: ${DYNATA_WEBHOOK_SECRET}
+  base-url: https://api.dynata.com
+
+logging:
+  level:
+    com.surveybridge: INFO
