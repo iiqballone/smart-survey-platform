@@ -5,17 +5,17 @@ interface BadgeProps {
   color?: Color;
 }
 
-const colorMap: Record<Color, string> = {
-  gray:   'bg-gray-100 text-gray-700',
-  blue:   'bg-blue-100 text-blue-700',
-  green:  'bg-green-100 text-green-700',
-  yellow: 'bg-yellow-100 text-yellow-700',
-  red:    'bg-red-100 text-red-700',
+const styleMap: Record<Color, React.CSSProperties> = {
+  gray:   { background: 'rgba(107,127,163,.12)', color: 'var(--muted)' },
+  blue:   { background: 'rgba(129,140,248,.12)', color: '#818CF8' },
+  green:  { background: 'rgba(52,211,153,.12)',  color: 'var(--success)' },
+  yellow: { background: 'rgba(251,191,36,.12)',  color: 'var(--warning)' },
+  red:    { background: 'rgba(248,113,113,.12)', color: 'var(--danger)' },
 };
 
 export function Badge({ label, color = 'gray' }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorMap[color]}`}>
+    <span className="badge" style={styleMap[color]}>
       {label}
     </span>
   );

@@ -1,14 +1,21 @@
-import { Badge } from '@/components/common/Badge';
 import type { SurveyStatus } from '@/types';
 
-const statusMap: Record<SurveyStatus, { label: string; color: 'gray' | 'blue' | 'green' | 'yellow' | 'red' }> = {
-  DRAFT:     { label: 'Draft',     color: 'gray'   },
-  LIVE:      { label: 'Live',      color: 'green'  },
-  PAUSED:    { label: 'Paused',    color: 'yellow' },
-  COMPLETED: { label: 'Completed', color: 'blue'   },
+const statusMap: Record<SurveyStatus, string> = {
+  LIVE:      'bLIVE',
+  DRAFT:     'bDRAFT',
+  PAUSED:    'bPAUSED',
+  COMPLETED: 'bCOMPLETED',
+};
+
+const labelMap: Record<SurveyStatus, string> = {
+  LIVE: 'Live', DRAFT: 'Draft', PAUSED: 'Paused', COMPLETED: 'Completed',
 };
 
 export function SurveyStatusBadge({ status }: { status: SurveyStatus }) {
-  const { label, color } = statusMap[status];
-  return <Badge label={label} color={color} />;
+  return (
+    <span className={`badge ${statusMap[status]}`}>
+      <span className="dot" />
+      {labelMap[status]}
+    </span>
+  );
 }

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUiStore } from '@/store/uiStore';
 
@@ -6,51 +6,111 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
+  badge?: string;
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+const mainNav: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: '▦' },
-  { to: '/surveys', label: 'Surveys', icon: '◧' },
-  { to: '/settings/profile', label: 'Settings', icon: '⚙' },
-  { to: '/admin/clients', label: 'Clients', icon: '👥', adminOnly: true },
-  { to: '/admin/dynata', label: 'Dynata Monitor', icon: '🔌', adminOnly: true },
-  { to: '/admin/system', label: 'System Health', icon: '❤', adminOnly: true },
+  { to: '/surveys',   label: 'Surveys',   icon: '◧', badge: '2' },
+  { to: '/surveys/responses', label: 'Responses', icon: '✉' },
+  { to: '/reports',   label: 'Reports',   icon: '📊' },
+];
+
+const bottomNav: NavItem[] = [
+  { to: '/team',     label: 'Team',     icon: '👥' },
+  { to: '/billing',  label: 'Billing',  icon: '💳' },
+  { to: '/settings', label: 'Settings', icon: '⚙' },
+];
+
+const adminNav: NavItem[] = [
+  { to: '/admin/clients', label: 'Clients',       icon: '🏢', adminOnly: true },
+  { to: '/admin/dynata',  label: 'Dynata Monitor', icon: '🔌', adminOnly: true },
+  { to: '/admin/system',  label: 'System Health',  icon: '❤',  adminOnly: true },
 ];
 
 export function Sidebar() {
-  const { isAdmin } = useAuth();
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const { user, isAdmin, logout } = useAuth();
+  const { sidebarOpen, setSidebarOpen } = useUiStore();
+  const navigate = useNavigate();
+
+  const close = () => setSidebarOpen(false);
+
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
 
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-gray-900 text-white transition-all duration-200
-        ${sidebarOpen ? 'w-56' : 'w-16'}`}
-    >
-      <div className="flex h-16 items-center px-4 border-b border-gray-700">
-        {sidebarOpen ? (
-          <span className="text-lg font-bold text-white">SurveyBridge</span>
-        ) : (
-          <span className="text-lg font-bold text-white">SB</span>
-        )}
+    <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
+      <div className="sb-logo">
+        <div className="logo-wrap">
+          <div className="logo-icon">S</div>
+          <div className="logo-name">Survey<span>Bridge</span></div>
+        </div>
+        <button className="sb-x" onClick={close} aria-label="Close sidebar">✕</button>
       </div>
-      <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
-        {navItems
-          .filter((item) => !item.adminOnly || isAdmin())
-          .map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors
-                ${isActive ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
-              }
-            >
-              <span className="text-base leading-none">{item.icon}</span>
-              {sidebarOpen && <span>{item.label}</span>}
-            </NavLink>
-          ))}
+
+      <nav className="sb-nav">
+        <div className="nav-lbl">Main</div>
+        {mainNav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `ni${isActive ? ' on' : ''}`}
+            onClick={close}
+          >
+            <span className="ni-icon">{item.icon}</span>
+            {item.label}
+            {item.badge && <span className="ni-badge">{item.badge}</span>}
+          </NavLink>
+        ))}
+
+        <div className="nav-lbl" style={{ marginTop: 8 }}>Account</div>
+        {bottomNav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `ni${isActive ? ' on' : ''}`}
+            onClick={close}
+          >
+            <span className="ni-icon">{item.icon}</span>
+            {item.label}
+          </NavLink>
+        ))}
+
+        {isAdmin() && (
+          <>
+            <div className="nav-lbl" style={{ marginTop: 8 }}>Admin</div>
+            {adminNav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `ni${isActive ? ' on' : ''}`}
+                onClick={close}
+              >
+                <span className="ni-icon">{item.icon}</span>
+                {item.label}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
+
+      <div className="sb-foot">
+        <div className="ucard" onClick={() => { navigate('/settings'); close(); }}>
+          <div className="avatar">{initials}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="uname">{user?.name ?? 'User'}</div>
+            <div className="urole">{user?.roles[0]?.replace('_', ' ') ?? ''}</div>
+          </div>
+          <button
+            className="btn btn-g btn-xs"
+            onClick={(e) => { e.stopPropagation(); logout(); }}
+          >
+            Out
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }

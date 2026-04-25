@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Table } from '@/components/common/Table';
 import { Badge } from '@/components/common/Badge';
-import { Button } from '@/components/common/Button';
+import { Spinner } from '@/components/common/Spinner';
 import { adminApi } from '@/services/adminApi';
 import type { Client } from '@/types';
-import type { Column } from '@/components/common/Table';
 
 export function ClientList() {
   const navigate = useNavigate();
@@ -18,55 +15,73 @@ export function ClientList() {
     queryFn: () => adminApi.listClients({ page, size: 20 }),
   });
 
-  const columns: Column<Client>[] = [
-    {
-      key: 'name',
-      header: 'Client',
-      render: (c) => (
-        <button
-          className="font-medium text-primary-600 hover:underline"
-          onClick={() => navigate(`/admin/clients/${c.id}`)}
-        >
-          {c.name}
-        </button>
-      ),
-    },
-    { key: 'email',  header: 'Email',  render: (c) => c.contactEmail },
-    { key: 'plan',   header: 'Plan',   render: (c) => <Badge label={c.plan} color="blue" /> },
-    {
-      key: 'quota',
-      header: 'Usage',
-      render: (c) => (
-        <span>
-          {c.usedResponseCount.toLocaleString()}
-          <span className="text-gray-400"> / {c.monthlyResponseQuota.toLocaleString()}</span>
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (c) => <Badge label={c.active ? 'Active' : 'Inactive'} color={c.active ? 'green' : 'gray'} />,
-    },
-  ];
-
   const totalPages = data ? Math.ceil(data.totalElements / 20) : 0;
 
   return (
     <div>
-      <PageHeader title="Clients" subtitle="All client accounts" />
-      <Table
-        columns={columns}
-        data={data?.content ?? []}
-        keyExtractor={(c) => c.id}
-        loading={isPending}
-        emptyMessage="No clients found."
-      />
+      <div className="sh">
+        <div className="st">Clients</div>
+      </div>
+
+      {isPending ? (
+        <div className="center-spinner"><Spinner size="lg" /></div>
+      ) : (
+        <div className="tw">
+          <div className="tscroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Email</th>
+                  <th>Plan</th>
+                  <th>Usage</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.content ?? []).map((c: Client) => {
+                  const pct = c.monthlyResponseQuota > 0
+                    ? Math.min(100, (c.usedResponseCount / c.monthlyResponseQuota) * 100)
+                    : 0;
+                  return (
+                    <tr key={c.id}>
+                      <td>
+                        <button
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 500, padding: 0 }}
+                          onClick={() => navigate(`/admin/clients/${c.id}`)}
+                        >
+                          {c.name}
+                        </button>
+                      </td>
+                      <td style={{ color: 'var(--muted)' }}>{c.contactEmail}</td>
+                      <td><Badge label={c.plan} color="blue" /></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="pbar" style={{ width: 60 }}>
+                            <div className="pfill" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                            {c.usedResponseCount.toLocaleString()} / {c.monthlyResponseQuota.toLocaleString()}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge label={c.active ? 'Active' : 'Inactive'} color={c.active ? 'green' : 'gray'} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-          <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>← Previous</Button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, fontSize: 13, color: 'var(--muted)' }}>
+          <button className="btn btn-s btn-sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>← Previous</button>
           <span>Page {page + 1} of {totalPages}</span>
-          <Button variant="secondary" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next →</Button>
+          <button className="btn btn-s btn-sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next →</button>
         </div>
       )}
     </div>

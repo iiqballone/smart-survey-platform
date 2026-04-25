@@ -3,15 +3,13 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/common/Input';
-import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
 import { useSurvey, useUpdateSurvey } from '@/hooks/useSurveys';
 
 const schema = z.object({
-  title:       z.string().min(3),
-  description: z.string().min(10),
+  title:       z.string().min(3, 'At least 3 characters'),
+  description: z.string().min(10, 'At least 10 characters'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -30,13 +28,17 @@ export function SurveyEdit() {
     if (survey) reset({ title: survey.title, description: survey.description });
   }, [survey, reset]);
 
-  if (isPending) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>;
-  if (!survey) return <p className="text-gray-500">Survey not found.</p>;
+  if (isPending) return <div className="center-spinner"><Spinner size="lg" /></div>;
+  if (!survey)   return <p style={{ color: 'var(--muted)' }}>Survey not found.</p>;
+
   if (survey.status !== 'DRAFT') {
     return (
-      <div className="text-center py-24">
-        <p className="text-gray-500">Only draft surveys can be edited.</p>
-        <Button className="mt-4" variant="secondary" onClick={() => navigate(`/surveys/${id}`)}>Back</Button>
+      <div className="empty">
+        <div className="ei">🔒</div>
+        <div className="et">Only draft surveys can be edited.</div>
+        <button className="btn btn-s btn-sm" style={{ marginTop: 12 }} onClick={() => navigate(`/surveys/${id}`)}>
+          Back to survey
+        </button>
       </div>
     );
   }
@@ -46,20 +48,36 @@ export function SurveyEdit() {
   };
 
   return (
-    <div className="max-w-2xl">
-      <PageHeader
-        title="Edit Survey"
-        actions={<Button variant="secondary" onClick={() => navigate(`/surveys/${id}`)}>Cancel</Button>}
-      />
-      <form onSubmit={handleSubmit(onSubmit)} className="card-padded space-y-4">
-        <Input label="Survey title" error={errors.title?.message} {...register('title')} />
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Description</label>
-          <textarea rows={4} className="input" {...register('description')} />
-          {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" loading={update.isPending}>Save Changes</Button>
+    <div className="fw">
+      <div className="sh">
+        <div className="st">Edit Survey</div>
+        <button className="btn btn-s btn-sm" onClick={() => navigate(`/surveys/${id}`)}>Cancel</button>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="fsec">
+          <div className="fst"><span className="fsi">📋</span> Survey details</div>
+          <div className="frow one">
+            <Input label="Survey title" error={errors.title?.message} {...register('title')} />
+          </div>
+          <div className="frow one">
+            <div className="fg">
+              <label className="fl">Description</label>
+              <textarea
+                className="fta"
+                rows={4}
+                style={errors.description ? { borderColor: 'var(--danger)' } : undefined}
+                {...register('description')}
+              />
+              {errors.description && <p className="ferr">{errors.description.message}</p>}
+            </div>
+          </div>
+          <div className="factions">
+            <button type="submit" className="btn btn-p" disabled={update.isPending}>
+              {update.isPending && <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />}
+              Save Changes
+            </button>
+          </div>
         </div>
       </form>
     </div>

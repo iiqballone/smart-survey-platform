@@ -3,20 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
-import { Button } from '@/components/common/Button';
 import { useCreateSurvey } from '@/hooks/useSurveys';
 import type { QuestionType } from '@/types';
 
 const QUESTION_TYPES: Array<{ value: QuestionType; label: string }> = [
   { value: 'SINGLE_CHOICE', label: 'Single Choice' },
-  { value: 'MULTI_CHOICE',  label: 'Multi Choice' },
-  { value: 'RATING',        label: 'Rating Scale' },
-  { value: 'OPEN_TEXT',     label: 'Open Text' },
-  { value: 'NPS',           label: 'NPS' },
-  { value: 'MATRIX',        label: 'Matrix' },
+  { value: 'MULTI_CHOICE',  label: 'Multi Choice'  },
+  { value: 'RATING',        label: 'Rating Scale'  },
+  { value: 'OPEN_TEXT',     label: 'Open Text'     },
+  { value: 'NPS',           label: 'NPS'           },
+  { value: 'MATRIX',        label: 'Matrix'        },
 ];
 
 const COUNTRIES = [
@@ -28,18 +26,18 @@ const COUNTRIES = [
 ];
 
 const schema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
+  title: z.string().min(3, 'At least 3 characters'),
+  description: z.string().min(10, 'At least 10 characters'),
   targeting: z.object({
-    country:      z.string().min(1),
-    ageMin:       z.coerce.number().min(16).max(99),
-    ageMax:       z.coerce.number().min(16).max(99),
-    gender:       z.enum(['ALL', 'MALE', 'FEMALE']),
-    sampleSize:   z.coerce.number().min(50),
-    incidenceRate:z.coerce.number().min(1).max(100),
+    country:       z.string().min(1),
+    ageMin:        z.coerce.number().min(16).max(99),
+    ageMax:        z.coerce.number().min(16).max(99),
+    gender:        z.enum(['ALL', 'MALE', 'FEMALE']),
+    sampleSize:    z.coerce.number().min(50),
+    incidenceRate: z.coerce.number().min(1).max(100),
   }),
   questions: z.array(z.object({
-    text:     z.string().min(5, 'Question must be at least 5 characters'),
+    text:     z.string().min(5, 'At least 5 characters'),
     type:     z.enum(['SINGLE_CHOICE','MULTI_CHOICE','RATING','OPEN_TEXT','NPS','MATRIX']),
     required: z.boolean(),
     options:  z.string().optional(),
@@ -48,10 +46,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const STEPS = ['details', 'targeting', 'questions'] as const;
+type Step = typeof STEPS[number];
+
 export function SurveyCreate() {
   const navigate = useNavigate();
   const create = useCreateSurvey();
-  const [step, setStep] = useState<'details' | 'targeting' | 'questions'>('details');
+  const [step, setStep] = useState<Step>('details');
 
   const { register, control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -69,10 +70,8 @@ export function SurveyCreate() {
       description: values.description,
       targeting:   values.targeting,
       questions:   values.questions.map((q) => ({
-        text:     q.text,
-        type:     q.type,
-        required: q.required,
-        options:  q.options ? q.options.split('\n').map((s) => s.trim()).filter(Boolean) : undefined,
+        text: q.text, type: q.type, required: q.required,
+        options: q.options ? q.options.split('\n').map((s) => s.trim()).filter(Boolean) : undefined,
       })),
     }, {
       onSuccess: (survey) => navigate(`/surveys/${survey.id}`),
@@ -80,128 +79,112 @@ export function SurveyCreate() {
   };
 
   return (
-    <div className="max-w-3xl">
-      <PageHeader
-        title="New Survey"
-        subtitle="Fill in details, targeting, and questions"
-        actions={
-          <Button variant="secondary" onClick={() => navigate('/surveys')}>
-            Cancel
-          </Button>
-        }
-      />
+    <div className="fw">
+      <div className="sh">
+        <div className="st">New Survey</div>
+        <button className="btn btn-s btn-sm" onClick={() => navigate('/surveys')}>Cancel</button>
+      </div>
 
-      {/* Step tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
-        {(['details', 'targeting', 'questions'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setStep(s)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors
-              ${step === s ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            {s}
+      <div className="tabs">
+        {STEPS.map((s, i) => (
+          <button key={s} className={`tab${step === s ? ' on' : ''}`} onClick={() => setStep(s)}>
+            {i + 1}. {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         {step === 'details' && (
-          <div className="card-padded space-y-4">
-            <Input label="Survey title" error={errors.title?.message} {...register('title')} />
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                rows={4}
-                className={`input ${errors.description ? 'input-error' : ''}`}
-                {...register('description')}
-              />
-              {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
+          <div className="fsec">
+            <div className="fst"><span className="fsi">📋</span> Survey details</div>
+            <div className="frow one">
+              <Input label="Survey title" error={errors.title?.message} {...register('title')} />
             </div>
-            <div className="flex justify-end">
-              <Button type="button" onClick={() => setStep('targeting')}>Next: Targeting →</Button>
+            <div className="frow one">
+              <div className="fg">
+                <label className="fl">Description</label>
+                <textarea className="fta" rows={4} style={errors.description ? { borderColor: 'var(--danger)' } : undefined} {...register('description')} />
+                {errors.description && <p className="ferr">{errors.description.message}</p>}
+              </div>
+            </div>
+            <div className="factions">
+              <button type="button" className="btn btn-p" onClick={() => setStep('targeting')}>
+                Next: Targeting →
+              </button>
             </div>
           </div>
         )}
 
         {step === 'targeting' && (
-          <div className="card-padded space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Select
-                label="Country"
-                options={COUNTRIES}
-                {...register('targeting.country')}
-              />
-              <Select
-                label="Gender"
-                options={[
-                  { value: 'ALL', label: 'All' },
-                  { value: 'MALE', label: 'Male' },
-                  { value: 'FEMALE', label: 'Female' },
-                ]}
-                {...register('targeting.gender')}
-              />
+          <div className="fsec">
+            <div className="fst"><span className="fsi">🎯</span> Targeting</div>
+            <div className="frow">
+              <Select label="Country" options={COUNTRIES} {...register('targeting.country')} />
+              <Select label="Gender" options={[
+                { value: 'ALL', label: 'All genders' },
+                { value: 'MALE', label: 'Male' },
+                { value: 'FEMALE', label: 'Female' },
+              ]} {...register('targeting.gender')} />
+            </div>
+            <div className="frow">
               <Input label="Min age" type="number" error={errors.targeting?.ageMin?.message} {...register('targeting.ageMin')} />
               <Input label="Max age" type="number" error={errors.targeting?.ageMax?.message} {...register('targeting.ageMax')} />
-              <Input label="Sample size" type="number" hint="Number of completed responses" {...register('targeting.sampleSize')} />
+            </div>
+            <div className="frow">
+              <Input label="Sample size" type="number" hint="Target number of responses" {...register('targeting.sampleSize')} />
               <Input label="Incidence rate (%)" type="number" hint="Expected % of eligible respondents" {...register('targeting.incidenceRate')} />
             </div>
-            <div className="flex justify-between">
-              <Button type="button" variant="secondary" onClick={() => setStep('details')}>← Back</Button>
-              <Button type="button" onClick={() => setStep('questions')}>Next: Questions →</Button>
+            <div className="factions">
+              <button type="button" className="btn btn-s" onClick={() => setStep('details')}>← Back</button>
+              <button type="button" className="btn btn-p" onClick={() => setStep('questions')}>Next: Questions →</button>
             </div>
           </div>
         )}
 
         {step === 'questions' && (
-          <div className="space-y-4">
+          <div>
             {fields.map((field, i) => (
-              <div key={field.id} className="card-padded space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">Question {i + 1}</span>
-                  {fields.length > 1 && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>Remove</Button>
-                  )}
+              <div key={field.id} className="qcard">
+                <div className="qhead">
+                  <div className="qnum">{i + 1}</div>
+                  <div className="qrow" style={{ flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>Question {i + 1}</span>
+                      {fields.length > 1 && (
+                        <button type="button" className="btn btn-d btn-xs" onClick={() => remove(i)}>Remove</button>
+                      )}
+                    </div>
+                    <Input label="Question text" error={errors.questions?.[i]?.text?.message} {...register(`questions.${i}.text`)} />
+                    <Select label="Type" options={QUESTION_TYPES} {...register(`questions.${i}.type`)} />
+                    <div className="fg">
+                      <label className="fl">Options <span style={{ fontWeight: 400 }}>(one per line)</span></label>
+                      <textarea className="fta" rows={3} {...register(`questions.${i}.options`)} />
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+                      <input type="checkbox" {...register(`questions.${i}.required`)} />
+                      Required
+                    </label>
+                  </div>
                 </div>
-                <Input
-                  label="Question text"
-                  error={errors.questions?.[i]?.text?.message}
-                  {...register(`questions.${i}.text`)}
-                />
-                <Select
-                  label="Type"
-                  options={QUESTION_TYPES}
-                  {...register(`questions.${i}.type`)}
-                />
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-700">
-                    Options <span className="font-normal text-gray-400">(one per line)</span>
-                  </label>
-                  <textarea rows={3} className="input" {...register(`questions.${i}.options`)} />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" {...register(`questions.${i}.required`)} />
-                  Required
-                </label>
               </div>
             ))}
 
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              className="w-full"
+              className="addq"
               onClick={() => append({ text: '', type: 'SINGLE_CHOICE', required: false, options: '' })}
             >
               + Add Question
-            </Button>
+            </button>
 
-            {errors.questions?.root && (
-              <p className="text-sm text-red-600">{errors.questions.root.message}</p>
-            )}
+            {errors.questions?.root && <p className="ferr" style={{ marginTop: 8 }}>{errors.questions.root.message}</p>}
 
-            <div className="flex justify-between">
-              <Button type="button" variant="secondary" onClick={() => setStep('targeting')}>← Back</Button>
-              <Button type="submit" loading={create.isPending}>Create Survey</Button>
+            <div className="factions" style={{ marginTop: 16 }}>
+              <button type="button" className="btn btn-s" onClick={() => setStep('targeting')}>← Back</button>
+              <button type="submit" className="btn btn-p" disabled={create.isPending}>
+                {create.isPending && <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />}
+                Create Survey
+              </button>
             </div>
           </div>
         )}

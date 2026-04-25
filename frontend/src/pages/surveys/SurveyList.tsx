@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/common/Button';
-import { Table } from '@/components/common/Table';
 import { SurveyStatusBadge } from '@/components/survey/SurveyStatusBadge';
+import { Spinner } from '@/components/common/Spinner';
 import { useSurveys, useDeleteSurvey } from '@/hooks/useSurveys';
 import { useAuth } from '@/hooks/useAuth';
-import type { Survey, SurveyStatus } from '@/types';
-import type { Column } from '@/components/common/Table';
+import type { SurveyStatus } from '@/types';
 
-const STATUS_FILTERS: Array<{ label: string; value: SurveyStatus | 'ALL' }> = [
+const FILTERS: Array<{ label: string; value: SurveyStatus | 'ALL' }> = [
   { label: 'All', value: 'ALL' },
   { label: 'Draft', value: 'DRAFT' },
   { label: 'Live', value: 'LIVE' },
@@ -26,93 +23,104 @@ export function SurveyList() {
   const { data, isPending } = useSurveys(statusFilter !== 'ALL' ? { status: statusFilter } : undefined);
   const deleteMutation = useDeleteSurvey();
 
-  const columns: Column<Survey>[] = [
-    {
-      key: 'title',
-      header: 'Survey',
-      render: (s) => (
-        <Link to={`/surveys/${s.id}`} className="font-medium text-primary-600 hover:underline">
-          {s.title}
-        </Link>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (s) => <SurveyStatusBadge status={s.status} />,
-    },
-    {
-      key: 'responses',
-      header: 'Responses',
-      render: (s) => (
-        <span>
-          {s.receivedResponseCount.toLocaleString()}
-          <span className="text-gray-400"> / {s.targetResponseCount.toLocaleString()}</span>
-        </span>
-      ),
-    },
-    {
-      key: 'created',
-      header: 'Created',
-      render: (s) => new Date(s.createdAt).toLocaleDateString(),
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (s) => (
-        <div className="flex gap-2 justify-end">
-          <Button size="sm" variant="secondary" onClick={() => navigate(`/surveys/${s.id}/responses`)}>
-            Responses
-          </Button>
-          {canEdit && s.status === 'DRAFT' && (
-            <Button size="sm" variant="secondary" onClick={() => navigate(`/surveys/${s.id}/edit`)}>
-              Edit
-            </Button>
-          )}
-          {canEdit && (
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => {
-                if (confirm('Delete this survey?')) deleteMutation.mutate(s.id);
-              }}
-            >
-              Delete
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div>
-      <PageHeader
-        title="Surveys"
-        subtitle="All your surveys"
-        actions={canEdit ? <Button onClick={() => navigate('/surveys/new')}>+ New Survey</Button> : undefined}
-      />
+      <div className="sh">
+        <div className="st">Surveys</div>
+        {canEdit && (
+          <button className="btn btn-p btn-sm" onClick={() => navigate('/surveys/new')}>+ New Survey</button>
+        )}
+      </div>
 
-      <div className="mb-4 flex gap-2">
-        {STATUS_FILTERS.map((f) => (
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        {FILTERS.map((f) => (
           <button
             key={f.value}
+            className={`tab${statusFilter === f.value ? ' on' : ''}`}
             onClick={() => setStatusFilter(f.value)}
-            className={`rounded-full px-3 py-1 text-sm font-medium transition-colors
-              ${statusFilter === f.value ? 'bg-primary-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}
           >
             {f.label}
           </button>
         ))}
       </div>
 
-      <Table
-        columns={columns}
-        data={data?.content ?? []}
-        keyExtractor={(s) => s.id}
-        loading={isPending}
-        emptyMessage="No surveys found."
-      />
+      {isPending ? (
+        <div className="center-spinner"><Spinner size="lg" /></div>
+      ) : (
+        <div className="tw">
+          <div className="tscroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Survey</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Responses</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.content ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
+                      No surveys found.
+                    </td>
+                  </tr>
+                ) : (
+                  (data?.content ?? []).map((s) => {
+                    const pct = s.targetResponseCount > 0
+                      ? Math.min(100, (s.receivedResponseCount / s.targetResponseCount) * 100)
+                      : 0;
+                    return (
+                      <tr key={s.id}>
+                        <td>
+                          <div className="sn">
+                            <Link to={`/surveys/${s.id}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                              {s.title}
+                            </Link>
+                          </div>
+                          {s.description && <div className="sm">{s.description}</div>}
+                        </td>
+                        <td><SurveyStatusBadge status={s.status} /></td>
+                        <td>
+                          <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{pct.toFixed(0)}%</div>
+                        </td>
+                        <td style={{ color: 'var(--muted)' }}>
+                          {s.receivedResponseCount.toLocaleString()}
+                          <span style={{ opacity: 0.5 }}> / {s.targetResponseCount.toLocaleString()}</span>
+                        </td>
+                        <td style={{ color: 'var(--muted)' }}>{new Date(s.createdAt).toLocaleDateString()}</td>
+                        <td>
+                          <div className="acts">
+                            <button className="btn btn-s btn-xs" onClick={() => navigate(`/surveys/${s.id}/responses`)}>
+                              Responses
+                            </button>
+                            {canEdit && s.status === 'DRAFT' && (
+                              <button className="btn btn-s btn-xs" onClick={() => navigate(`/surveys/${s.id}/edit`)}>
+                                Edit
+                              </button>
+                            )}
+                            {canEdit && (
+                              <button
+                                className="btn btn-d btn-xs"
+                                onClick={() => { if (confirm('Delete this survey?')) deleteMutation.mutate(s.id); }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

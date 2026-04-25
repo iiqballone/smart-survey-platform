@@ -1,42 +1,76 @@
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/common/Badge';
 import { Spinner } from '@/components/common/Spinner';
 import { adminApi } from '@/services/adminApi';
 
+interface DynataJob {
+  dynataProjectId: string;
+  title: string;
+  syncStatus: string;
+  receivedResponseCount: number;
+  targetResponseCount: number;
+}
+
 export function DynataMonitor() {
-  const { data: jobs, isPending } = useQuery({
+  const { data: jobs, isPending } = useQuery<DynataJob[]>({
     queryKey: ['admin', 'dynata', 'jobs'],
     queryFn: adminApi.dynataJobs,
     refetchInterval: 30_000,
   });
 
+  const syncColor = (s: string): 'green' | 'red' | 'yellow' =>
+    s === 'SYNCED' ? 'green' : s === 'SYNC_FAILED' ? 'red' : 'yellow';
+
   return (
     <div>
-      <PageHeader title="Dynata Monitor" subtitle="Active Dynata survey jobs and sync status" />
+      <div className="sh">
+        <div className="st">Dynata Monitor</div>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Auto-refresh every 30s</span>
+      </div>
+
       {isPending ? (
-        <div className="flex justify-center py-24"><Spinner size="lg" /></div>
+        <div className="center-spinner"><Spinner size="lg" /></div>
       ) : !jobs || jobs.length === 0 ? (
-        <div className="card-padded text-center text-sm text-gray-400 py-16">
-          No active Dynata jobs.
+        <div className="empty">
+          <div className="ei">🔌</div>
+          <div className="et">No active Dynata jobs</div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {(jobs as Array<{ dynataProjectId: string; title: string; syncStatus: string; receivedResponseCount: number; targetResponseCount: number }>).map((job) => (
-            <div key={job.dynataProjectId} className="card p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">{job.title}</p>
-                <p className="text-xs text-gray-500 font-mono">{job.dynataProjectId}</p>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>{job.receivedResponseCount} / {job.targetResponseCount}</span>
-                <Badge
-                  label={job.syncStatus}
-                  color={job.syncStatus === 'SYNCED' ? 'green' : job.syncStatus === 'SYNC_FAILED' ? 'red' : 'yellow'}
-                />
-              </div>
-            </div>
-          ))}
+        <div className="tw">
+          <div className="tscroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Dynata ID</th>
+                  <th>Progress</th>
+                  <th>Responses</th>
+                  <th>Sync status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map((job) => {
+                  const pct = job.targetResponseCount > 0
+                    ? Math.min(100, (job.receivedResponseCount / job.targetResponseCount) * 100)
+                    : 0;
+                  return (
+                    <tr key={job.dynataProjectId}>
+                      <td><div className="sn">{job.title}</div></td>
+                      <td><span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)' }}>{job.dynataProjectId}</span></td>
+                      <td>
+                        <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{pct.toFixed(0)}%</div>
+                      </td>
+                      <td style={{ color: 'var(--muted)' }}>
+                        {job.receivedResponseCount} / {job.targetResponseCount}
+                      </td>
+                      <td><Badge label={job.syncStatus.replace('_', ' ')} color={syncColor(job.syncStatus)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

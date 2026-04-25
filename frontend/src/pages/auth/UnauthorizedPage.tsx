@@ -2,13 +2,11 @@ import { Link } from 'react-router-dom';
 
 export function UnauthorizedPage() {
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 text-center">
-      <p className="text-5xl">🔒</p>
-      <h1 className="text-2xl font-semibold text-gray-900">Access Denied</h1>
-      <p className="text-sm text-gray-500">You don't have permission to view this page.</p>
-      <Link to="/dashboard" className="btn-md btn-secondary">
-        Go to Dashboard
-      </Link>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 12, textAlign: 'center', padding: 20 }}>
+      <div style={{ fontSize: 48 }}>🔒</div>
+      <div style={{ fontFamily: 'Syne', fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>Access Denied</div>
+      <div style={{ fontSize: 13, color: 'var(--muted)' }}>You don't have permission to view this page.</div>
+      <Link to="/dashboard" className="btn btn-s" style={{ marginTop: 8 }}>Go to Dashboard</Link>
     </div>
   );
 }

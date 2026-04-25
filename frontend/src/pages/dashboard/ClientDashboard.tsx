@@ -1,82 +1,97 @@
-import { PageHeader } from '@/components/layout/PageHeader';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ResponseChart } from '@/components/dashboard/ResponseChart';
+import { Spinner } from '@/components/common/Spinner';
 import { useDashboardSummary, useCompletionRates } from '@/hooks/useDashboard';
 import { useSurveys } from '@/hooks/useSurveys';
-import { Spinner } from '@/components/common/Spinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const DEMO_TIMESERIES = Array.from({ length: 14 }, (_, i) => ({
-  date: new Date(Date.now() - (13 - i) * 86_400_000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-  count: Math.floor(Math.random() * 80) + 10,
-}));
+import { MOCK_TIMESERIES } from '@/mocks/data';
 
 export function ClientDashboard() {
-  const { data: summary, isPending: summaryPending } = useDashboardSummary();
+  const { data: summary, isPending } = useDashboardSummary();
   const { data: rates } = useCompletionRates();
   const { data: surveys } = useSurveys({ status: 'LIVE' });
 
-  if (summaryPending) {
-    return <div className="flex justify-center py-24"><Spinner size="lg" /></div>;
+  if (isPending) {
+    return <div className="center-spinner"><Spinner size="lg" /></div>;
   }
 
-  const stats = summary ?? {
-    totalSurveys: 0,
-    activeSurveys: 0,
-    totalResponses: 0,
-    avgCompletionRate: 0,
-    responsesThisMonth: 0,
-  };
+  const s = summary ?? { totalSurveys: 0, activeSurveys: 0, totalResponses: 0, avgCompletionRate: 0, responsesThisMonth: 0 };
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Overview of your surveys and responses" />
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
-        <StatsCard icon="◧" label="Total Surveys" value={stats.totalSurveys} />
-        <StatsCard icon="▶" label="Active Surveys" value={stats.activeSurveys} />
-        <StatsCard icon="✉" label="Total Responses" value={stats.totalResponses.toLocaleString()} />
-        <StatsCard
-          icon="✔"
-          label="Avg Completion"
-          value={`${stats.avgCompletionRate.toFixed(1)}%`}
-          sub={`${stats.responsesThisMonth} this month`}
-        />
+      <div className="kgrid">
+        <StatsCard label="Total Surveys"    value={s.totalSurveys} />
+        <StatsCard label="Active Surveys"   value={s.activeSurveys} delta="Live now" deltaUp />
+        <StatsCard label="Total Responses"  value={s.totalResponses.toLocaleString()} />
+        <StatsCard label="Avg Completion"   value={`${s.avgCompletionRate}%`} sub={`${s.responsesThisMonth} this month`} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-6">
-        <ResponseChart data={DEMO_TIMESERIES} title="Daily responses (last 14 days)" />
+      <div className="cgrid">
+        <ResponseChart data={MOCK_TIMESERIES} title="Daily responses — last 30 days" />
 
-        <div className="card-padded">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">Completion rates by survey</h3>
+        <div className="ccard">
+          <div className="chead">
+            <div>
+              <div className="ctitle">Completion rates</div>
+              <div className="csub">By survey</div>
+            </div>
+          </div>
           {rates && rates.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={rates} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="title" tick={{ fontSize: 10 }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} unit="%" />
-                <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
-                <Bar dataKey="completionRate" fill="#2563eb" radius={[4, 4, 0, 0]} />
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={rates} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="title" tick={{ fontSize: 9, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--muted)' }} tickLine={false} axisLine={false} unit="%" />
+                <Tooltip
+                  formatter={(v: number) => `${v}%`}
+                  contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
+                />
+                <Bar dataKey="completionRate" fill="var(--accent)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-60 items-center justify-center text-sm text-gray-400">No data yet</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--muted)', fontSize: 13 }}>No data yet</div>
           )}
         </div>
       </div>
 
       {surveys && surveys.content.length > 0 && (
-        <div className="card-padded">
-          <h3 className="mb-3 text-sm font-semibold text-gray-700">Active surveys</h3>
-          <div className="space-y-2">
-            {surveys.content.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-md bg-gray-50 px-4 py-2 text-sm">
-                <span className="font-medium text-gray-800">{s.title}</span>
-                <span className="text-gray-500">
-                  {s.receivedResponseCount} / {s.targetResponseCount} responses
-                </span>
-              </div>
-            ))}
+        <div className="ccard">
+          <div className="sh" style={{ marginBottom: 14 }}>
+            <div className="st">Active surveys</div>
+          </div>
+          <div className="tw" style={{ marginBottom: 0 }}>
+            <div className="tscroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Survey</th>
+                    <th>Progress</th>
+                    <th>Responses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {surveys.content.map((survey) => {
+                    const pct = survey.targetResponseCount > 0
+                      ? Math.min(100, (survey.receivedResponseCount / survey.targetResponseCount) * 100)
+                      : 0;
+                    return (
+                      <tr key={survey.id}>
+                        <td><div className="sn">{survey.title}</div></td>
+                        <td>
+                          <div className="pbar">
+                            <div className="pfill" style={{ width: `${pct}%` }} />
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--muted)' }}>
+                          {survey.receivedResponseCount.toLocaleString()} / {survey.targetResponseCount.toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

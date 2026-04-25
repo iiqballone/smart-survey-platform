@@ -2,22 +2,21 @@ interface StatsCardProps {
   label: string;
   value: string | number;
   sub?: string;
-  icon?: string;
+  delta?: string;
+  deltaUp?: boolean;
 }
 
-export function StatsCard({ label, value, sub, icon }: StatsCardProps) {
+export function StatsCard({ label, value, sub, delta, deltaUp }: StatsCardProps) {
   return (
-    <div className="card-padded flex items-start gap-4">
-      {icon && (
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-xl text-primary-600">
-          {icon}
+    <div className="kcard">
+      <div className="klbl">{label}</div>
+      <div className="kval">{value}</div>
+      {(sub || delta) && (
+        <div className="kdelta">
+          {delta && <span className={deltaUp ? 'up' : 'dn'}>{deltaUp ? '▲' : '▼'} {delta}</span>}
+          {sub && <span style={{ color: 'var(--muted)' }}>{sub}</span>}
         </div>
       )}
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
-        {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
-      </div>
     </div>
   );
 }

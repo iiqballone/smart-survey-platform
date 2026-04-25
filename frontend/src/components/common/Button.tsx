@@ -1,9 +1,8 @@
 import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes } from 'react';
-import { Spinner } from './Spinner';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
-type Size = 'sm' | 'md' | 'lg';
+type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
+type Size = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -11,21 +10,32 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+const variantMap: Record<Variant, string> = {
+  primary: 'btn-p',
+  secondary: 'btn-s',
+  danger: 'btn-d',
+  ghost: 'btn-g',
+  success: 'btn-success',
+};
+
+const sizeMap: Record<Size, string> = {
+  xs: 'btn-xs',
+  sm: 'btn-sm',
+  md: '',
+  lg: '',
+};
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', loading, disabled, children, className = '', ...props }, ref) => {
-    const variantClass = `btn-${variant}`;
-    const sizeClass = `btn-${size}`;
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || loading}
-        className={`${sizeClass} ${variantClass} ${className}`}
-        {...props}
-      >
-        {loading && <Spinner size="sm" />}
-        {children}
-      </button>
-    );
-  },
+  ({ variant = 'primary', size = 'md', loading, disabled, children, className = '', ...props }, ref) => (
+    <button
+      ref={ref}
+      disabled={disabled || loading}
+      className={`btn ${variantMap[variant]} ${sizeMap[size]} ${className}`.trim()}
+      {...props}
+    >
+      {loading && <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />}
+      {children}
+    </button>
+  ),
 );
 Button.displayName = 'Button';

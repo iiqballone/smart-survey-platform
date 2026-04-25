@@ -8,15 +8,20 @@ interface ResponseChartProps {
 
 export function ResponseChart({ data, title = 'Responses over time' }: ResponseChartProps) {
   return (
-    <div className="card-padded">
-      <h3 className="mb-4 text-sm font-semibold text-gray-700">{title}</h3>
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} />
-          <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-          <Tooltip contentStyle={{ fontSize: 12 }} />
-          <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2} dot={false} />
+    <div className="ccard">
+      <div className="chead">
+        <div className="ctitle">{title}</div>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: -16 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+          <Tooltip
+            contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
+            cursor={{ stroke: 'var(--border)' }}
+          />
+          <Line type="monotone" dataKey="count" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: 'var(--accent)' }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

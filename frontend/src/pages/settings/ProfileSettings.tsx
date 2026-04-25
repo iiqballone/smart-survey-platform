@@ -1,4 +1,3 @@
-import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/common/Badge';
 
@@ -6,25 +5,31 @@ export function ProfileSettings() {
   const { user } = useAuth();
 
   return (
-    <div className="max-w-xl">
-      <PageHeader title="Profile" subtitle="Your account details" />
-      <div className="card-padded space-y-4">
-        <div>
-          <p className="text-xs text-gray-500">Name</p>
-          <p className="mt-0.5 font-medium text-gray-900">{user?.name ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Email</p>
-          <p className="mt-0.5 font-medium text-gray-900">{user?.email ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Roles</p>
-          <div className="flex gap-2 flex-wrap">
-            {user?.roles.map((r) => <Badge key={r} label={r} color="blue" />) ?? '—'}
+    <div className="settings-wrap">
+      <div className="sh">
+        <div className="st">Profile</div>
+      </div>
+
+      <div className="fsec">
+        <div className="fst"><span className="fsi">👤</span> Account details</div>
+        <div className="frow">
+          <div className="fg">
+            <span className="fl">Name</span>
+            <span style={{ fontSize: 14, color: 'var(--text)', fontWeight: 500 }}>{user?.name ?? '—'}</span>
+          </div>
+          <div className="fg">
+            <span className="fl">Email</span>
+            <span style={{ fontSize: 14, color: 'var(--text)' }}>{user?.email ?? '—'}</span>
           </div>
         </div>
-        <p className="text-xs text-gray-400">
-          Profile details are managed in your identity provider (Keycloak). Contact your admin to make changes.
+        <div className="fg" style={{ marginTop: 8 }}>
+          <span className="fl">Roles</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            {user?.roles.map((r) => <Badge key={r} label={r.replace('_', ' ')} color="blue" />) ?? '—'}
+          </div>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 14, lineHeight: 1.5 }}>
+          Profile details are managed in your identity provider. Contact your admin to make changes.
         </p>
       </div>
     </div>

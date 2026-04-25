@@ -42,7 +42,7 @@ export const surveyApi = {
 
   update: (id: string, data: Partial<CreateSurveyRequest>) => {
     if (DEV) {
-      localSurveys = localSurveys.map(s => s.id === id ? { ...s, ...data } : s);
+      localSurveys = localSurveys.map(s => s.id === id ? { ...s, title: data.title ?? s.title, description: data.description ?? s.description } : s);
       return Promise.resolve(localSurveys.find(s => s.id === id)!);
     }
     return api.put<Survey>(`/surveys/${id}`, data).then(r => r.data);

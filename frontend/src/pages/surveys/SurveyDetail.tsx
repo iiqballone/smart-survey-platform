@@ -1,8 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/common/Button';
 import { SurveyStatusBadge } from '@/components/survey/SurveyStatusBadge';
-import { QuestionCard } from '@/components/survey/QuestionCard';
 import { Spinner } from '@/components/common/Spinner';
 import { useSurvey, usePublishSurvey, usePauseSurvey, useCloseSurvey } from '@/hooks/useSurveys';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,100 +15,123 @@ export function SurveyDetail() {
   const pause   = usePauseSurvey();
   const close   = useCloseSurvey();
 
-  if (isPending) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>;
-  if (!survey) return <p className="text-gray-500">Survey not found.</p>;
+  if (isPending) return <div className="center-spinner"><Spinner size="lg" /></div>;
+  if (!survey)   return <p style={{ color: 'var(--muted)' }}>Survey not found.</p>;
 
-  const progress = survey.targetResponseCount > 0
+  const pct = survey.targetResponseCount > 0
     ? Math.min(100, (survey.receivedResponseCount / survey.targetResponseCount) * 100)
     : 0;
 
   return (
-    <div className="max-w-4xl">
-      <PageHeader
-        title={survey.title}
-        subtitle={survey.description}
-        actions={
-          <div className="flex gap-2">
-            {canEdit && survey.status === 'DRAFT' && (
-              <>
-                <Button variant="secondary" onClick={() => navigate(`/surveys/${id}/edit`)}>Edit</Button>
-                <Button onClick={() => publish.mutate(id)} loading={publish.isPending}>Publish to Dynata</Button>
-              </>
-            )}
-            {canEdit && survey.status === 'LIVE' && (
-              <>
-                <Button variant="secondary" onClick={() => pause.mutate(id)} loading={pause.isPending}>Pause</Button>
-                <Button variant="danger" onClick={() => close.mutate(id)} loading={close.isPending}>Close</Button>
-              </>
-            )}
-            {canEdit && survey.status === 'PAUSED' && (
-              <Button onClick={() => publish.mutate(id)} loading={publish.isPending}>Resume</Button>
-            )}
-            <Button variant="secondary" onClick={() => navigate(`/surveys/${id}/responses`)}>
-              View Responses
-            </Button>
+    <div className="fw">
+      <div className="sh">
+        <div>
+          <div className="st">{survey.title}</div>
+          {survey.description && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{survey.description}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {canEdit && survey.status === 'DRAFT' && (
+            <>
+              <button className="btn btn-s btn-sm" onClick={() => navigate(`/surveys/${id}/edit`)}>Edit</button>
+              <button className="btn btn-p btn-sm" onClick={() => publish.mutate(id)} disabled={publish.isPending}>
+                {publish.isPending ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : null}
+                Publish
+              </button>
+            </>
+          )}
+          {canEdit && survey.status === 'LIVE' && (
+            <>
+              <button className="btn btn-s btn-sm" onClick={() => pause.mutate(id)} disabled={pause.isPending}>Pause</button>
+              <button className="btn btn-d btn-sm" onClick={() => close.mutate(id)} disabled={close.isPending}>Close</button>
+            </>
+          )}
+          {canEdit && survey.status === 'PAUSED' && (
+            <button className="btn btn-p btn-sm" onClick={() => publish.mutate(id)} disabled={publish.isPending}>Resume</button>
+          )}
+          <button className="btn btn-s btn-sm" onClick={() => navigate(`/surveys/${id}/responses`)}>Responses</button>
+          <button className="btn btn-s btn-sm" onClick={() => navigate(`/surveys/${id}/reports`)}>Report</button>
+        </div>
+      </div>
+
+      <div className="detail-grid">
+        <div className="kcard">
+          <div className="klbl">Status</div>
+          <div style={{ marginTop: 6 }}><SurveyStatusBadge status={survey.status} /></div>
+        </div>
+        <div className="kcard">
+          <div className="klbl">Responses</div>
+          <div className="kval" style={{ fontSize: 20 }}>
+            {survey.receivedResponseCount.toLocaleString()}
+            <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}> / {survey.targetResponseCount.toLocaleString()}</span>
           </div>
-        }
-      />
-
-      {/* Status + Dynata info */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="card p-4">
-          <p className="text-xs text-gray-500">Status</p>
-          <div className="mt-1"><SurveyStatusBadge status={survey.status} /></div>
         </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-500">Responses</p>
-          <p className="mt-1 font-semibold text-gray-900">
-            {survey.receivedResponseCount.toLocaleString()} / {survey.targetResponseCount.toLocaleString()}
-          </p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-500">Published</p>
-          <p className="mt-1 text-sm text-gray-700">
+        <div className="kcard">
+          <div className="klbl">Published</div>
+          <div style={{ fontSize: 14, color: 'var(--text)', marginTop: 8 }}>
             {survey.publishedAt ? new Date(survey.publishedAt).toLocaleDateString() : '—'}
-          </p>
+          </div>
         </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-500">Dynata Project ID</p>
-          <p className="mt-1 text-sm font-mono text-gray-700">{survey.dynataProjectId ?? '—'}</p>
+        <div className="kcard">
+          <div className="klbl">Dynata ID</div>
+          <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text)', marginTop: 8 }}>{survey.dynataProjectId ?? '—'}</div>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
+      <div className="fsec" style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
           <span>Progress</span>
-          <span>{progress.toFixed(0)}%</span>
+          <span>{pct.toFixed(0)}%</span>
         </div>
-        <div className="h-2 w-full rounded-full bg-gray-200">
-          <div className="h-2 rounded-full bg-primary-600 transition-all" style={{ width: `${progress}%` }} />
+        <div className="pbar" style={{ width: '100%' }}>
+          <div className="pfill" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
-      {/* Targeting */}
       {survey.targeting && (
-        <div className="card-padded mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Targeting</h2>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div><span className="text-gray-500">Country: </span>{survey.targeting.country}</div>
-            <div><span className="text-gray-500">Age: </span>{survey.targeting.ageMin}–{survey.targeting.ageMax}</div>
-            <div><span className="text-gray-500">Gender: </span>{survey.targeting.gender}</div>
-            <div><span className="text-gray-500">Sample size: </span>{survey.targeting.sampleSize}</div>
-            <div><span className="text-gray-500">Incidence rate: </span>{survey.targeting.incidenceRate}%</div>
+        <div className="fsec">
+          <div className="fst"><span className="fsi">🎯</span> Targeting</div>
+          <div className="frow three">
+            <div className="fg">
+              <span className="fl">Country</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.country}</span>
+            </div>
+            <div className="fg">
+              <span className="fl">Age range</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.ageMin}–{survey.targeting.ageMax}</span>
+            </div>
+            <div className="fg">
+              <span className="fl">Gender</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.gender}</span>
+            </div>
+            <div className="fg">
+              <span className="fl">Sample size</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.sampleSize.toLocaleString()}</span>
+            </div>
+            <div className="fg">
+              <span className="fl">Incidence rate</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.incidenceRate}%</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Questions */}
       {survey.questions && survey.questions.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Questions ({survey.questions.length})</h2>
-          <div className="space-y-3">
-            {survey.questions.map((q, i) => (
-              <QuestionCard key={q.id} question={q} index={i} />
-            ))}
+          <div className="sh" style={{ marginBottom: 12 }}>
+            <div className="st">Questions ({survey.questions.length})</div>
           </div>
+          {survey.questions.map((q, i) => (
+            <div key={q.id} className="qcard">
+              <div className="qhead">
+                <div className="qnum">{i + 1}</div>
+                <div className="qrow">
+                  <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{q.text}</span>
+                  <span className="tag">{q.type.replace('_', ' ')}</span>
+                  {q.required && <span style={{ fontSize: 11, color: 'var(--muted)' }}>Required</span>}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -69,7 +69,7 @@ export function useCloseSurvey() {
 export function useDeleteSurvey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => surveyApi.delete(id),
+    mutationFn: (id: string) => surveyApi.delete(id).then(() => {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: surveyKeys.all }),
   });
 }

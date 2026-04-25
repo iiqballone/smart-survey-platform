@@ -1,18 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/common/Badge';
 import { Spinner } from '@/components/common/Spinner';
 import { adminApi } from '@/services/adminApi';
 
-interface HealthComponent {
-  status: 'UP' | 'DOWN' | 'UNKNOWN';
-  details?: Record<string, unknown>;
-}
+interface HealthComponent { status: 'UP' | 'DOWN' | 'UNKNOWN' }
+interface HealthData { status: 'UP' | 'DOWN'; components: Record<string, HealthComponent> }
 
-interface HealthData {
-  status: 'UP' | 'DOWN';
-  components: Record<string, HealthComponent>;
-}
+const statusColor = (s: string): 'green' | 'red' | 'yellow' =>
+  s === 'UP' ? 'green' : s === 'DOWN' ? 'red' : 'yellow';
 
 export function SystemHealth() {
   const { data, isPending, refetch } = useQuery<HealthData>({
@@ -21,39 +16,32 @@ export function SystemHealth() {
     refetchInterval: 60_000,
   });
 
-  const statusColor = (s: string) =>
-    s === 'UP' ? 'green' : s === 'DOWN' ? 'red' : 'yellow';
-
   return (
     <div>
-      <PageHeader
-        title="System Health"
-        subtitle="Live platform component status"
-        actions={
-          <button
-            onClick={() => void refetch()}
-            className="text-sm text-primary-600 hover:underline"
-          >
-            Refresh
-          </button>
-        }
-      />
+      <div className="sh">
+        <div className="st">System Health</div>
+        <button className="btn btn-s btn-sm" onClick={() => void refetch()}>↻ Refresh</button>
+      </div>
+
       {isPending ? (
-        <div className="flex justify-center py-24"><Spinner size="lg" /></div>
+        <div className="center-spinner"><Spinner size="lg" /></div>
       ) : !data ? (
-        <div className="card-padded text-sm text-red-500 py-16 text-center">
-          Unable to fetch health data from backend.
+        <div className="fsec" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--danger)' }}>
+          Unable to fetch health data.
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="card p-4 flex items-center justify-between">
-            <span className="font-semibold text-gray-900">Overall</span>
-            <Badge label={data.status} color={statusColor(data.status) as 'green' | 'red' | 'yellow'} />
+        <div>
+          <div className="ccard" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="ctitle">Overall</div>
+              <div className="csub">Platform status</div>
+            </div>
+            <Badge label={data.status} color={statusColor(data.status)} />
           </div>
           {Object.entries(data.components ?? {}).map(([name, comp]) => (
-            <div key={name} className="card p-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 capitalize">{name}</span>
-              <Badge label={comp.status} color={statusColor(comp.status) as 'green' | 'red' | 'yellow'} />
+            <div key={name} className="ccard" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="ctitle" style={{ textTransform: 'capitalize' }}>{name}</div>
+              <Badge label={comp.status} color={statusColor(comp.status)} />
             </div>
           ))}
         </div>

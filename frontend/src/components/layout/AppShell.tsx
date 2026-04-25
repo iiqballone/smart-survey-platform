@@ -4,16 +4,17 @@ import { TopNav } from './TopNav';
 import { useUiStore } from '@/store/uiStore';
 
 export function AppShell() {
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const { sidebarOpen, setSidebarOpen } = useUiStore();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="app">
+      <div className={`backdrop${sidebarOpen ? ' on' : ''}`} onClick={() => setSidebarOpen(false)} />
       <Sidebar />
-      <div className={`flex flex-1 flex-col overflow-hidden transition-all duration-200 ${sidebarOpen ? 'ml-56' : 'ml-16'}`}>
+      <div className="main">
         <TopNav />
-        <main className="flex-1 overflow-y-auto p-6">
+        <div className="content">
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );
