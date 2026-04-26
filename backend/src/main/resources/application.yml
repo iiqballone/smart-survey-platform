@@ -1,39 +1,63 @@
 spring:
   application:
     name: surveybridge-backend
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surveybridge}
     username: ${DATABASE_USER:surveybridge}
     password: ${DATABASE_PASSWORD:surveybridge}
+
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_batch_fetch_size: 20
+
   flyway:
     enabled: true
     locations: classpath:db/migration
+
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/surveybridge-dev}
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: surveybridge-response-consumer
       auto-offset-reset: earliest
+
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
 
 server:
   port: 8080
 
 dynata:
-  api-key: ${DYNATA_API_KEY}
-  webhook-secret: ${DYNATA_WEBHOOK_SECRET}
+  api-key: ${DYNATA_API_KEY:changeme}
+  webhook-secret: ${DYNATA_WEBHOOK_SECRET:changeme}
   base-url: https://api.dynata.com
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
 logging:
   level:
     com.surveybridge: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

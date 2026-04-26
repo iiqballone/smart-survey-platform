@@ -1,0 +1,11 @@
+CREATE INDEX idx_surveys_client_id         ON surveys(client_id);
+CREATE INDEX idx_surveys_client_status      ON surveys(client_id, status);
+CREATE INDEX idx_questions_survey_id        ON questions(survey_id);
+CREATE INDEX idx_question_options_q_id     ON question_options(question_id);
+CREATE INDEX idx_responses_survey_id        ON survey_responses(survey_id);
+CREATE INDEX idx_responses_completed_at     ON survey_responses(completed_at);
+CREATE INDEX idx_answers_response_id        ON answers(response_id);
+CREATE INDEX idx_answers_question_id        ON answers(question_id);
+CREATE INDEX idx_client_users_client_id     ON client_users(client_id);
+CREATE INDEX idx_notifications_client_read  ON notifications(client_id, read);
+CREATE INDEX idx_notifications_client_time  ON notifications(client_id, created_at DESC);

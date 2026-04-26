@@ -13,8 +13,7 @@ interface NavItem {
 const mainNav: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: '▦' },
   { to: '/surveys',   label: 'Surveys',   icon: '◧', badge: '2' },
-  { to: '/surveys/responses', label: 'Responses', icon: '✉' },
-  { to: '/reports',   label: 'Reports',   icon: '📊' },
+  { to: '/reports',   label: 'Analytics', icon: '📊' },
 ];
 
 const bottomNav: NavItem[] = [

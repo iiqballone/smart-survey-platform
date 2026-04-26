@@ -9,10 +9,12 @@ import { UnauthorizedPage} from '@/pages/auth/UnauthorizedPage';
 import { ClientDashboard } from '@/pages/dashboard/ClientDashboard';
 import { SurveyList }      from '@/pages/surveys/SurveyList';
 import { SurveyCreate }    from '@/pages/surveys/SurveyCreate';
+import { TemplatesPage }   from '@/pages/surveys/TemplatesPage';
 import { SurveyDetail }    from '@/pages/surveys/SurveyDetail';
 import { SurveyEdit }      from '@/pages/surveys/SurveyEdit';
 import { ResponseViewer }  from '@/pages/responses/ResponseViewer';
 import { ReportView }      from '@/pages/responses/ReportView';
+import { AnalyticsPage }   from '@/pages/reports/AnalyticsPage';
 import { ProfileSettings } from '@/pages/settings/ProfileSettings';
 import { TeamManagement }  from '@/pages/settings/TeamManagement';
 import { BillingPage }     from '@/pages/settings/BillingPage';
@@ -37,13 +39,14 @@ export const router = createBrowserRouter([
           { path: '/dashboard', element: <ClientDashboard /> },
 
           { path: '/surveys',              element: <SurveyList /> },
+          { path: '/surveys/templates',    element: <TemplatesPage /> },
           { path: '/surveys/new',          element: <SurveyCreate /> },
           { path: '/surveys/:id',          element: <SurveyDetail /> },
           { path: '/surveys/:id/edit',     element: <SurveyEdit /> },
           { path: '/surveys/:id/responses',element: <ResponseViewer /> },
           { path: '/surveys/:id/reports',  element: <ReportView /> },
 
-          { path: '/reports',  element: <Navigate to="/surveys" replace /> },
+          { path: '/reports',  element: <AnalyticsPage /> },
 
           { path: '/team',     element: <TeamManagement /> },
           { path: '/billing',  element: <BillingPage /> },
