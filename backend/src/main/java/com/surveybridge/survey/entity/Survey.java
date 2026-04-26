@@ -4,9 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -28,25 +27,43 @@ public class Survey {
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "text")
-    private String description;
+    @Column(name = "survey_url", columnDefinition = "text")
+    private String surveyUrl;
+
+    @Column(name = "fusion_survey_id")
+    private String fusionSurveyId;
+
+    @Column(name = "fusion_entry_url", columnDefinition = "text")
+    private String fusionEntryUrl;
+
+    @Column(length = 10)
+    private String country;
+
+    @Column(name = "completes_required")
+    private int completesRequired;
+
+    @Column(name = "completed_count")
+    private int completedCount;
+
+    @Column(name = "screenout_count")
+    private int screenoutCount;
+
+    @Column
+    private int loi;
+
+    @Column(name = "cpi_min", precision = 10, scale = 2)
+    private BigDecimal cpiMin;
+
+    @Column(name = "cpi_max", precision = 10, scale = 2)
+    private BigDecimal cpiMax;
+
+    @Column(name = "callback_url", columnDefinition = "text")
+    private String callbackUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private SurveyStatus status = SurveyStatus.DRAFT;
-
-    @Column(name = "dynata_project_id")
-    private String dynataProjectId;
-
-    @Embedded
-    private DynataTargeting targeting;
-
-    @Column(name = "target_response_count")
-    private int targetResponseCount;
-
-    @Column(name = "received_response_count")
-    private int receivedResponseCount;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -57,9 +74,4 @@ public class Survey {
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
-
-    @OneToMany(mappedBy = "survey", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("orderIndex ASC")
-    @Builder.Default
-    private List<Question> questions = new ArrayList<>();
 }

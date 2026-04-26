@@ -45,10 +45,10 @@ spring:
 server:
   port: 8080
 
-dynata:
-  api-key: ${DYNATA_API_KEY:changeme}
-  webhook-secret: ${DYNATA_WEBHOOK_SECRET:changeme}
-  base-url: https://api.dynata.com
+fusion:
+  api-key: ${FUSION_API_KEY:changeme}
+  webhook-secret: ${FUSION_WEBHOOK_SECRET:changeme}
+  base-url: https://api.purespectrum.com
 
 springdoc:
   api-docs:

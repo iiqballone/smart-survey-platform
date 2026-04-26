@@ -36,10 +36,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
-    @ExceptionHandler(DynataIntegrationException.class)
-    public ProblemDetail handleDynata(DynataIntegrationException ex) {
+    @ExceptionHandler(FusionIntegrationException.class)
+    public ProblemDetail handleFusion(FusionIntegrationException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, ex.getMessage());
-        pd.setType(URI.create("about:dynata-error"));
+        pd.setType(URI.create("about:fusion-error"));
         return pd;
     }
 

@@ -7,9 +7,8 @@ import java.util.UUID;
 public record SurveyPerformanceDto(
     UUID id,
     String title,
-    int received,
-    int target,
+    int completedCount,
+    int completesRequired,
     double completionRate,
-    int nps,
     SurveyStatus status
 ) {}

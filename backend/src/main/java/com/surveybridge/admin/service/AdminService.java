@@ -1,14 +1,14 @@
 package com.surveybridge.admin.service;
 
 import com.surveybridge.admin.dto.AdminClientDto;
+import com.surveybridge.admin.dto.FusionJobDto;
 import com.surveybridge.admin.dto.HealthStatusDto;
 import com.surveybridge.admin.dto.UpdateQuotaRequest;
 import com.surveybridge.client.entity.Client;
 import com.surveybridge.client.repository.ClientRepository;
 import com.surveybridge.common.PagedResult;
 import com.surveybridge.common.exception.ResourceNotFoundException;
-import com.surveybridge.dynata.DynataApiClient;
-import com.surveybridge.dynata.dto.DynataJobDto;
+import com.surveybridge.fusion.FusionApiClient;
 import com.surveybridge.survey.entity.Survey;
 import com.surveybridge.survey.entity.SurveyStatus;
 import com.surveybridge.survey.repository.SurveyRepository;
@@ -31,7 +31,7 @@ public class AdminService {
 
     private final ClientRepository clientRepository;
     private final SurveyRepository surveyRepository;
-    private final DynataApiClient dynataApiClient;
+    private final FusionApiClient fusionApiClient;
     private final RedisConnectionFactory redisConnectionFactory;
 
     public PagedResult<AdminClientDto> listClients(Pageable pageable) {
@@ -50,21 +50,22 @@ public class AdminService {
         client.setMonthlyResponseQuota(req.monthlyResponseQuota());
     }
 
-    public List<DynataJobDto> getDynataJobs() {
-        List<Survey> liveOrPaused = surveyRepository.findAll().stream()
+    public List<FusionJobDto> getFusionJobs() {
+        List<Survey> liveOrPaused = surveyRepository.findAll(Pageable.unpaged()).getContent()
+            .stream()
             .filter(s -> s.getStatus() == SurveyStatus.LIVE || s.getStatus() == SurveyStatus.PAUSED)
             .toList();
 
-        if (liveOrPaused.isEmpty()) return dynataApiClient.getActiveJobs();
+        if (liveOrPaused.isEmpty()) return fusionApiClient.getActiveJobs();
 
         return liveOrPaused.stream()
-            .filter(s -> s.getDynataProjectId() != null)
-            .map(s -> new DynataJobDto(
-                s.getDynataProjectId(),
+            .filter(s -> s.getFusionSurveyId() != null)
+            .map(s -> new FusionJobDto(
+                s.getFusionSurveyId(),
                 s.getTitle(),
-                s.getStatus() == SurveyStatus.LIVE ? "SYNCED" : "PAUSED_SYNCED",
-                s.getReceivedResponseCount(),
-                s.getTargetResponseCount()))
+                s.getStatus() == SurveyStatus.LIVE ? "LIVE" : "PAUSED",
+                s.getCompletedCount(),
+                s.getCompletesRequired()))
             .toList();
     }
 
@@ -75,10 +76,10 @@ public class AdminService {
         return new HealthStatusDto(
             allUp ? "UP" : "DEGRADED",
             Map.of(
-                "postgres",  new HealthStatusDto.ComponentStatus(postgres),
-                "redis",     new HealthStatusDto.ComponentStatus(redis),
-                "kafka",     new HealthStatusDto.ComponentStatus("UP"),
-                "keycloak",  new HealthStatusDto.ComponentStatus("UP")
+                "postgres", new HealthStatusDto.ComponentStatus(postgres),
+                "redis",    new HealthStatusDto.ComponentStatus(redis),
+                "kafka",    new HealthStatusDto.ComponentStatus("UP"),
+                "keycloak", new HealthStatusDto.ComponentStatus("UP")
             ));
     }
 

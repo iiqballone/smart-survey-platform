@@ -1,13 +1,17 @@
 package com.surveybridge.survey.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-
-import java.util.List;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 public record CreateSurveyRequestDto(
-    @NotBlank @Size(min = 3, max = 500) String title,
-    @NotBlank @Size(min = 10) String description,
-    @NotNull @Valid TargetingDto targeting,
-    @NotEmpty @Valid List<CreateQuestionDto> questions
+    @NotBlank @Size(max = 500) String title,
+    @NotBlank String surveyUrl,
+    @Positive int completesRequired,
+    @Positive int loi,
+    @NotBlank @Size(min = 2, max = 2) String country,
+    @NotNull @Valid CpiRangeDto cpiRange,
+    @NotBlank String callbackUrl
 ) {}

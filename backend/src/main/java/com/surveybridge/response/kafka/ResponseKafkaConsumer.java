@@ -2,9 +2,9 @@ package com.surveybridge.response.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.surveybridge.config.KafkaConfig;
-import com.surveybridge.dynata.dto.DynataWebhookPayload;
+import com.surveybridge.fusion.dto.FusionEventPayload;
 import com.surveybridge.notification.service.NotificationService;
-import com.surveybridge.response.entity.Answer;
+import com.surveybridge.response.entity.EventType;
 import com.surveybridge.response.entity.SurveyResponse;
 import com.surveybridge.response.repository.SurveyResponseRepository;
 import com.surveybridge.survey.entity.Survey;
@@ -15,10 +15,11 @@ import org.springframework.cache.CacheManager;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -30,80 +31,92 @@ public class ResponseKafkaConsumer {
     private final NotificationService notificationService;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
+    private final WebClient fusionWebClient;
 
     @KafkaListener(topics = KafkaConfig.RESPONSE_TOPIC, containerFactory = "kafkaListenerContainerFactory")
     @Transactional
     public void onMessage(String message) {
         try {
-            DynataWebhookPayload payload = objectMapper.readValue(message, DynataWebhookPayload.class);
-            persist(payload);
+            FusionEventPayload payload = objectMapper.readValue(message, FusionEventPayload.class);
+            process(payload);
         } catch (Exception e) {
             log.error("Failed to process Kafka message", e);
         }
     }
 
-    private void persist(DynataWebhookPayload payload) {
-        SurveyResponse response = SurveyResponse.builder()
-            .surveyId(payload.getSurveyId())
-            .dynataRespondentId(payload.getDynataRespondentId())
-            .country(payload.getCountry())
-            .ageGroup(payload.getAgeGroup())
-            .gender(payload.getGender())
-            .completedAt(payload.getCompletedAt() != null
-                ? LocalDateTime.ofInstant(payload.getCompletedAt(), ZoneOffset.UTC)
-                : LocalDateTime.now())
-            .durationSeconds(payload.getDurationSeconds())
-            .build();
+    private void process(FusionEventPayload payload) {
+        EventType eventType = "complete".equalsIgnoreCase(payload.getEvent())
+            ? EventType.COMPLETE : EventType.SCREENOUT;
 
-        if (payload.getAnswers() != null) {
-            List<Answer> answers = payload.getAnswers().stream()
-                .map(a -> Answer.builder()
-                    .response(response)
-                    .questionId(a.getQuestionId())
-                    .questionText(a.getQuestionText())
-                    .value(a.getValue())
-                    .build())
-                .toList();
-            response.setAnswers(answers);
-        }
+        surveyRepository.findByFusionSurveyId(payload.getFusionSurveyId()).ifPresent(survey -> {
+            SurveyResponse response = SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .respondentId(payload.getRespondentId())
+                .fusionSurveyId(payload.getFusionSurveyId())
+                .eventType(eventType)
+                .cpi(payload.getCpi())
+                .occurredAt(LocalDateTime.now())
+                .build();
+            responseRepository.save(response);
 
-        responseRepository.save(response);
-        surveyRepository.incrementResponseCount(payload.getSurveyId());
+            if (eventType == EventType.COMPLETE) {
+                surveyRepository.incrementCompletedCount(survey.getId());
+            } else {
+                surveyRepository.incrementScreenoutCount(survey.getId());
+            }
 
-        evictCaches(payload.getSurveyId().toString());
+            evictCaches(survey.getId().toString());
+            forwardToClient(survey, payload, eventType);
 
-        // Entity cache cleared by clearAutomatically = true on the @Modifying query above,
-        // so findById returns the already-incremented count from the DB.
-        surveyRepository.findById(payload.getSurveyId()).ifPresent(survey ->
-            checkMilestones(survey, survey.getReceivedResponseCount()));
+            surveyRepository.findById(survey.getId()).ifPresent(s ->
+                checkMilestones(s, s.getCompletedCount()));
+        });
     }
 
-    private void checkMilestones(Survey survey, int newCount) {
-        int target = survey.getTargetResponseCount();
-        if (target <= 0) return;
+    private void forwardToClient(Survey survey, FusionEventPayload payload, EventType eventType) {
+        if (survey.getCallbackUrl() == null || survey.getCallbackUrl().isBlank()) return;
+        try {
+            Map<String, Object> body = Map.of(
+                "event", "survey." + eventType.name().toLowerCase(),
+                "survey_id", survey.getId().toString(),
+                "respondent_id", payload.getRespondentId()
+            );
+            fusionWebClient.post()
+                .uri(survey.getCallbackUrl())
+                .bodyValue(body)
+                .retrieve()
+                .toBodilessEntity()
+                .subscribe(
+                    r -> log.debug("Forwarded event to client callback for survey {}", survey.getId()),
+                    e -> log.warn("Failed to forward event to client callback {}: {}", survey.getCallbackUrl(), e.getMessage())
+                );
+        } catch (Exception e) {
+            log.warn("Error building client callback request for survey {}: {}", survey.getId(), e.getMessage());
+        }
+    }
 
-        if (newCount == target) {
+    private void checkMilestones(Survey survey, int completedCount) {
+        int target = survey.getCompletesRequired();
+        if (target <= 0) return;
+        if (completedCount == target) {
             notificationService.createNotification(
                 survey.getClientId(), "SUCCESS",
                 "Survey quota reached",
-                survey.getTitle() + " collected all " + target + " responses.",
+                survey.getTitle() + " collected all " + target + " completes.",
                 "/surveys/" + survey.getId() + "/reports");
-        } else if (newCount == target / 2) {
+        } else if (completedCount == target / 2) {
             notificationService.createNotification(
                 survey.getClientId(), "INFO",
                 "Milestone — 50% complete",
-                survey.getTitle() + " hit " + newCount + "/" + target + " responses.",
+                survey.getTitle() + " hit " + completedCount + "/" + target + " completes.",
                 "/surveys/" + survey.getId());
         }
     }
 
     private void evictCaches(String surveyId) {
-        // Clear the full cache buckets — dashboard keys include clientId which we don't
-        // have here, and analytics keys vary by surveyId. Clearing is simpler and safe
-        // because both caches have short TTLs anyway.
         var dashboard = cacheManager.getCache("dashboard");
-        var analytics  = cacheManager.getCache("analytics");
+        var analytics = cacheManager.getCache("analytics");
         if (dashboard != null) dashboard.clear();
-        if (analytics  != null) analytics.evict(surveyId);
+        if (analytics != null) analytics.evict(surveyId);
     }
 }

@@ -22,18 +22,21 @@ public class NotificationController {
     private final CurrentUserContext ctx;
 
     @GetMapping
+    @Operation(summary = "List notifications")
     public List<NotificationDto> list() {
         return notificationService.getForClient(ctx.getClientId());
     }
 
     @PutMapping("/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Mark notification as read")
     public void markRead(@PathVariable UUID id) {
         notificationService.markRead(id, ctx.getClientId());
     }
 
     @PutMapping("/read-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Mark all notifications as read")
     public void markAllRead() {
         notificationService.markAllRead(ctx.getClientId());
     }

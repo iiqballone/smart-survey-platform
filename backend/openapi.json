@@ -1,0 +1,721 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SurveyBridge API",
+    "version": "1.0.0",
+    "description": "Survey sampling orchestration platform. Integrates SurveyMonkey (survey hosting) with PureSpectrum Fusion (panel sampling). The platform tracks completion events and forwards them to client webhooks — it never stores survey answers."
+  },
+  "servers": [
+    { "url": "http://localhost:8080", "description": "Local development" }
+  ],
+  "security": [
+    { "bearerAuth": [] }
+  ],
+  "tags": [
+    { "name": "Surveys", "description": "Survey lifecycle management" },
+    { "name": "Responses", "description": "Completion/screenout event tracking" },
+    { "name": "Redirects", "description": "Browser redirect endpoints for SurveyMonkey" },
+    { "name": "Analytics", "description": "Per-survey and cross-survey analytics" },
+    { "name": "Dashboard", "description": "KPIs and time-series charts" },
+    { "name": "Notifications", "description": "In-app notifications" },
+    { "name": "Team", "description": "Team member management" },
+    { "name": "Admin", "description": "Platform administration (PLATFORM_ADMIN role required)" }
+  ],
+  "paths": {
+    "/api/v1/surveys": {
+      "get": {
+        "tags": ["Surveys"],
+        "summary": "List surveys",
+        "operationId": "listSurveys",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/SurveyStatus" }, "description": "Filter by status" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "default": "createdAt,desc" }, "description": "Sort field and direction, e.g. createdAt,desc" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of surveys",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PagedSurveyDto" } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Surveys"],
+        "summary": "Register a new survey",
+        "operationId": "createSurvey",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSurveyRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Survey created (DRAFT status)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}": {
+      "get": {
+        "tags": ["Surveys"],
+        "summary": "Get survey",
+        "operationId": "getSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "200": { "description": "Survey details including fusionEntryUrl", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Surveys"],
+        "summary": "Update survey (DRAFT only)",
+        "operationId": "updateSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSurveyRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Updated survey", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Surveys"],
+        "summary": "Delete survey (DRAFT only)",
+        "operationId": "deleteSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/publish": {
+      "post": {
+        "tags": ["Surveys"],
+        "summary": "Publish survey to Fusion",
+        "description": "Pushes the survey to PureSpectrum Fusion and stores the fusionSurveyId + fusionEntryUrl. Share fusionEntryUrl with panel suppliers.",
+        "operationId": "publishSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "200": { "description": "Survey is now LIVE with fusionEntryUrl populated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/pause": {
+      "post": {
+        "tags": ["Surveys"],
+        "summary": "Pause survey",
+        "operationId": "pauseSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "200": { "description": "Survey paused", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/close": {
+      "post": {
+        "tags": ["Surveys"],
+        "summary": "Close survey",
+        "operationId": "closeSurvey",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "200": { "description": "Survey closed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyDto" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/v1/webhook/fusion": {
+      "post": {
+        "tags": ["Responses"],
+        "summary": "Receive Fusion event webhook",
+        "description": "Server-to-server webhook called by PureSpectrum Fusion when a respondent completes or is screened out. Validated via HMAC-SHA256 signature in X-Fusion-Signature header. No JWT required.",
+        "operationId": "fusionWebhook",
+        "security": [],
+        "parameters": [
+          { "name": "X-Fusion-Signature", "in": "header", "required": false, "schema": { "type": "string" }, "description": "HMAC-SHA256 hex signature of the request body" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FusionEventPayload" } } }
+        },
+        "responses": {
+          "202": { "description": "Accepted — event queued for async processing" },
+          "403": { "description": "Invalid or missing signature" }
+        }
+      }
+    },
+    "/api/v1/surveys/{surveyId}/responses": {
+      "get": {
+        "tags": ["Responses"],
+        "summary": "List events for a survey",
+        "operationId": "listResponses",
+        "parameters": [
+          { "$ref": "#/components/parameters/SurveyIdPath" },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Filter from (ISO 8601)" },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Filter to (ISO 8601)" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated list of events", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PagedResponseDto" } } } }
+        }
+      }
+    },
+    "/api/v1/surveys/{surveyId}/responses/export": {
+      "get": {
+        "tags": ["Responses"],
+        "summary": "Export events as CSV or Excel",
+        "operationId": "exportResponses",
+        "parameters": [
+          { "$ref": "#/components/parameters/SurveyIdPath" },
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["csv", "excel"], "default": "csv" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "File download",
+            "content": {
+              "text/csv": { "schema": { "type": "string", "format": "binary" } },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { "schema": { "type": "string", "format": "binary" } }
+            }
+          }
+        }
+      }
+    },
+    "/complete": {
+      "get": {
+        "tags": ["Redirects"],
+        "summary": "Completion redirect from SurveyMonkey",
+        "description": "SurveyMonkey redirects the respondent's browser here after survey completion. No auth required. The authoritative event comes via the Fusion server-side webhook.",
+        "operationId": "completionRedirect",
+        "security": [],
+        "parameters": [
+          { "name": "UID", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Respondent ID assigned by Fusion" }
+        ],
+        "responses": {
+          "200": { "description": "Acknowledged" }
+        }
+      }
+    },
+    "/terminate": {
+      "get": {
+        "tags": ["Redirects"],
+        "summary": "Screenout redirect from SurveyMonkey",
+        "description": "SurveyMonkey redirects the respondent's browser here after a screenout. No auth required.",
+        "operationId": "screenoutRedirect",
+        "security": [],
+        "parameters": [
+          { "name": "UID", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Respondent ID assigned by Fusion" }
+        ],
+        "responses": {
+          "200": { "description": "Acknowledged" }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/analytics": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get analytics for a survey",
+        "operationId": "surveyAnalytics",
+        "parameters": [{ "$ref": "#/components/parameters/SurveyId" }],
+        "responses": {
+          "200": { "description": "Analytics data", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SurveyAnalyticsDto" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/analytics/summary": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get cross-survey analytics summary",
+        "operationId": "crossSurveyAnalytics",
+        "responses": {
+          "200": { "description": "Cross-survey analytics", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CrossSurveyAnalyticsDto" } } } }
+        }
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get dashboard summary",
+        "operationId": "dashboardSummary",
+        "responses": {
+          "200": { "description": "KPI summary", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DashboardSummaryDto" } } } }
+        }
+      }
+    },
+    "/api/v1/dashboard/surveys/{surveyId}/timeseries": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get response time series for a survey",
+        "operationId": "timeSeries",
+        "parameters": [
+          { "$ref": "#/components/parameters/SurveyIdPath" },
+          { "name": "from", "in": "query", "required": true, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "granularity", "in": "query", "schema": { "type": "string", "enum": ["day", "week", "month"], "default": "day" } }
+        ],
+        "responses": {
+          "200": { "description": "Time series data", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TimeSeriesResponseDto" } } } }
+        }
+      }
+    },
+    "/api/v1/dashboard/completion-rates": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get completion rates for all surveys",
+        "operationId": "completionRates",
+        "responses": {
+          "200": { "description": "Completion rates", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CompletionRateDto" } } } } }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List notifications",
+        "operationId": "listNotifications",
+        "responses": {
+          "200": { "description": "Last 50 notifications", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/NotificationDto" } } } } }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark notification as read",
+        "operationId": "markRead",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "204": { "description": "Marked as read" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark all notifications as read",
+        "operationId": "markAllRead",
+        "responses": {
+          "204": { "description": "All marked as read" }
+        }
+      }
+    },
+    "/api/v1/team": {
+      "get": {
+        "tags": ["Team"],
+        "summary": "List team members",
+        "operationId": "listTeam",
+        "responses": {
+          "200": { "description": "Team members", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TeamMemberDto" } } } } }
+        }
+      }
+    },
+    "/api/v1/team/invite": {
+      "post": {
+        "tags": ["Team"],
+        "summary": "Invite a team member",
+        "operationId": "inviteTeamMember",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InviteRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Member invited", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TeamMemberDto" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/v1/team/{userId}": {
+      "delete": {
+        "tags": ["Team"],
+        "summary": "Remove a team member",
+        "operationId": "removeTeamMember",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "204": { "description": "Removed" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/admin/clients": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List all clients",
+        "operationId": "listClients",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated client list", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PagedAdminClientDto" } } } }
+        }
+      }
+    },
+    "/api/v1/admin/clients/{id}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get client by ID",
+        "operationId": "getClient",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Client details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminClientDto" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/admin/clients/{id}/quota": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update client monthly quota",
+        "operationId": "updateQuota",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateQuotaRequest" } } }
+        },
+        "responses": {
+          "204": { "description": "Updated" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/admin/fusion/jobs": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List active Fusion survey jobs",
+        "operationId": "fusionJobs",
+        "responses": {
+          "200": { "description": "Active Fusion jobs", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FusionJobDto" } } } } }
+        }
+      }
+    },
+    "/api/v1/admin/health": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "System health check",
+        "operationId": "health",
+        "responses": {
+          "200": { "description": "Health status of all components", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthStatusDto" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Keycloak-issued JWT. Obtain via Keycloak token endpoint."
+      }
+    },
+    "parameters": {
+      "SurveyId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" },
+        "description": "Survey UUID"
+      },
+      "SurveyIdPath": {
+        "name": "surveyId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" },
+        "description": "Survey UUID"
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetail" } } }
+      },
+      "BadRequest": {
+        "description": "Bad request / invalid state transition",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetail" } } }
+      },
+      "ValidationError": {
+        "description": "Validation failed",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetail" } } }
+      }
+    },
+    "schemas": {
+      "SurveyStatus": {
+        "type": "string",
+        "enum": ["DRAFT", "LIVE", "PAUSED", "COMPLETED"]
+      },
+      "EventType": {
+        "type": "string",
+        "enum": ["COMPLETE", "SCREENOUT"]
+      },
+      "CpiRangeDto": {
+        "type": "object",
+        "required": ["min", "max"],
+        "properties": {
+          "min": { "type": "number", "format": "decimal", "minimum": 0, "example": 2.0 },
+          "max": { "type": "number", "format": "decimal", "minimum": 0, "example": 4.0 }
+        }
+      },
+      "CreateSurveyRequest": {
+        "type": "object",
+        "required": ["title", "surveyUrl", "completesRequired", "loi", "country", "cpiRange", "callbackUrl"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 500, "example": "Consumer Preferences Q3" },
+          "surveyUrl": {
+            "type": "string",
+            "description": "SurveyMonkey URL with {rid} placeholder for respondent ID",
+            "example": "https://www.surveymonkey.com/r/ABC123?rid={rid}"
+          },
+          "completesRequired": { "type": "integer", "minimum": 1, "example": 500 },
+          "loi": { "type": "integer", "minimum": 1, "description": "Length of interview in minutes", "example": 10 },
+          "country": { "type": "string", "minLength": 2, "maxLength": 2, "description": "ISO 3166-1 alpha-2 country code", "example": "US" },
+          "cpiRange": { "$ref": "#/components/schemas/CpiRangeDto" },
+          "callbackUrl": {
+            "type": "string",
+            "description": "Client webhook URL to receive completion/screenout events",
+            "example": "https://client.com/webhooks/surveybridge"
+          }
+        }
+      },
+      "SurveyDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "clientId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "surveyUrl": { "type": "string", "description": "SurveyMonkey URL with {rid} placeholder" },
+          "fusionSurveyId": { "type": "string", "description": "Assigned by Fusion on publish. Null until published.", "example": "FS-1A2B3C4D" },
+          "fusionEntryUrl": { "type": "string", "description": "Panel supplier entry link. Share with suppliers after publishing.", "example": "https://fusion.spectrumsurveys.com/start-universal/1A2B3C4D" },
+          "country": { "type": "string", "example": "US" },
+          "completesRequired": { "type": "integer", "example": 500 },
+          "completedCount": { "type": "integer", "example": 127 },
+          "screenoutCount": { "type": "integer", "example": 43 },
+          "loi": { "type": "integer", "example": 10 },
+          "cpiMin": { "type": "number", "example": 2.0 },
+          "cpiMax": { "type": "number", "example": 4.0 },
+          "callbackUrl": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/SurveyStatus" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "publishedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "closedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "PagedSurveyDto": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "array", "items": { "$ref": "#/components/schemas/SurveyDto" } },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer" },
+          "page": { "type": "integer" },
+          "size": { "type": "integer" }
+        }
+      },
+      "FusionEventPayload": {
+        "type": "object",
+        "required": ["event", "respondent_id", "fusion_survey_id"],
+        "properties": {
+          "event": { "type": "string", "enum": ["complete", "screenout"], "example": "complete" },
+          "respondent_id": { "type": "string", "example": "R12345" },
+          "fusion_survey_id": { "type": "string", "example": "FS_7788" },
+          "cpi": { "type": "number", "format": "decimal", "example": 3.2 }
+        }
+      },
+      "ResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "surveyId": { "type": "string", "format": "uuid" },
+          "respondentId": { "type": "string", "example": "R12345" },
+          "fusionSurveyId": { "type": "string", "example": "FS_7788" },
+          "eventType": { "$ref": "#/components/schemas/EventType" },
+          "cpi": { "type": "number", "nullable": true, "example": 3.2 },
+          "occurredAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PagedResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "array", "items": { "$ref": "#/components/schemas/ResponseDto" } },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer" },
+          "page": { "type": "integer" },
+          "size": { "type": "integer" }
+        }
+      },
+      "SurveyAnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "surveyId": { "type": "string", "format": "uuid" },
+          "completedCount": { "type": "integer" },
+          "screenoutCount": { "type": "integer" },
+          "completesRequired": { "type": "integer" },
+          "completionRate": { "type": "number", "description": "Percentage of completesRequired fulfilled", "example": 25.4 },
+          "screenoutRate": { "type": "number", "description": "Screenouts as % of total respondents", "example": 25.3 },
+          "averageCpi": { "type": "number", "nullable": true, "example": 3.15 },
+          "trend": { "type": "array", "items": { "$ref": "#/components/schemas/TimeSeriesPoint" } }
+        }
+      },
+      "SurveyPerformanceDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "completedCount": { "type": "integer" },
+          "completesRequired": { "type": "integer" },
+          "completionRate": { "type": "number" },
+          "status": { "$ref": "#/components/schemas/SurveyStatus" }
+        }
+      },
+      "CrossSurveyAnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "responseTrend": { "type": "array", "items": { "$ref": "#/components/schemas/TimeSeriesPoint" } },
+          "surveyPerformance": { "type": "array", "items": { "$ref": "#/components/schemas/SurveyPerformanceDto" } }
+        }
+      },
+      "TimeSeriesPoint": {
+        "type": "object",
+        "properties": {
+          "period": { "type": "string", "example": "2025-04-20" },
+          "responses": { "type": "integer", "format": "int64", "description": "Total events (completes + screenouts)" },
+          "completions": { "type": "integer", "format": "int64", "description": "Complete events only" }
+        }
+      },
+      "TimeSeriesResponseDto": {
+        "type": "object",
+        "properties": {
+          "surveyId": { "type": "string", "format": "uuid" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/TimeSeriesPoint" } }
+        }
+      },
+      "DashboardSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalSurveys": { "type": "integer", "format": "int64" },
+          "activeSurveys": { "type": "integer", "format": "int64" },
+          "totalResponses": { "type": "integer", "format": "int64" },
+          "avgCompletionRate": { "type": "number", "description": "Average completion rate across all surveys (%)" },
+          "responsesThisMonth": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CompletionRateDto": {
+        "type": "object",
+        "properties": {
+          "surveyId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "completionRate": { "type": "number" },
+          "completedCount": { "type": "integer" },
+          "completesRequired": { "type": "integer" }
+        }
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "enum": ["INFO", "SUCCESS", "WARNING", "ERROR"] },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "link": { "type": "string", "nullable": true },
+          "read": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TeamMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["OWNER", "ADMIN", "MEMBER", "VIEWER"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "InviteRequest": {
+        "type": "object",
+        "required": ["email", "role"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["ADMIN", "MEMBER", "VIEWER"] }
+        }
+      },
+      "AdminClientDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "contactEmail": { "type": "string", "format": "email" },
+          "plan": { "type": "string" },
+          "monthlyResponseQuota": { "type": "integer" },
+          "usedResponseCount": { "type": "integer" },
+          "active": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PagedAdminClientDto": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "array", "items": { "$ref": "#/components/schemas/AdminClientDto" } },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer" },
+          "page": { "type": "integer" },
+          "size": { "type": "integer" }
+        }
+      },
+      "UpdateQuotaRequest": {
+        "type": "object",
+        "required": ["monthlyResponseQuota"],
+        "properties": {
+          "monthlyResponseQuota": { "type": "integer", "minimum": 0, "example": 5000 }
+        }
+      },
+      "FusionJobDto": {
+        "type": "object",
+        "properties": {
+          "fusionSurveyId": { "type": "string", "example": "FS-1A2B3C4D" },
+          "surveyTitle": { "type": "string" },
+          "state": { "type": "string", "enum": ["LIVE", "PAUSED"] },
+          "completedCount": { "type": "integer" },
+          "completesRequired": { "type": "integer" }
+        }
+      },
+      "HealthStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["UP", "DEGRADED"] },
+          "components": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["UP", "DOWN"] }
+              }
+            },
+            "example": {
+              "postgres": { "status": "UP" },
+              "redis": { "status": "UP" },
+              "kafka": { "status": "UP" },
+              "keycloak": { "status": "UP" }
+            }
+          }
+        }
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "format": "uri" },
+          "status": { "type": "integer" },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
+}

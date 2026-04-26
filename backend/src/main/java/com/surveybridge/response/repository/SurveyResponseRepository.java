@@ -1,5 +1,6 @@
 package com.surveybridge.response.repository;
 
+import com.surveybridge.response.entity.EventType;
 import com.surveybridge.response.entity.SurveyResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,28 +16,32 @@ public interface SurveyResponseRepository extends JpaRepository<SurveyResponse, 
 
     Page<SurveyResponse> findBySurveyId(UUID surveyId, Pageable pageable);
 
-    Page<SurveyResponse> findBySurveyIdAndCompletedAtBetween(
+    Page<SurveyResponse> findBySurveyIdAndOccurredAtBetween(
         UUID surveyId, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<SurveyResponse> findBySurveyIdAndEventType(UUID surveyId, EventType eventType, Pageable pageable);
 
     List<SurveyResponse> findBySurveyId(UUID surveyId);
 
     long countBySurveyId(UUID surveyId);
+
+    long countBySurveyIdAndEventType(UUID surveyId, EventType eventType);
 
     @Query("SELECT COUNT(r) FROM SurveyResponse r WHERE r.surveyId IN " +
            "(SELECT s.id FROM Survey s WHERE s.clientId = :clientId)")
     long countByClientId(@Param("clientId") UUID clientId);
 
     @Query("SELECT COUNT(r) FROM SurveyResponse r WHERE r.surveyId IN " +
-           "(SELECT s.id FROM Survey s WHERE s.clientId = :clientId) AND r.completedAt >= :since")
+           "(SELECT s.id FROM Survey s WHERE s.clientId = :clientId) AND r.occurredAt >= :since")
     long countByClientIdSince(@Param("clientId") UUID clientId, @Param("since") LocalDateTime since);
 
     @Query(value = """
-        SELECT TO_CHAR(DATE_TRUNC(:granularity, completed_at), 'YYYY-MM-DD') AS period,
+        SELECT TO_CHAR(DATE_TRUNC(:granularity, occurred_at), 'YYYY-MM-DD') AS period,
                COUNT(*) AS responses,
-               SUM(CASE WHEN duration_seconds > 0 THEN 1 ELSE 0 END) AS completions
+               SUM(CASE WHEN event_type = 'COMPLETE' THEN 1 ELSE 0 END) AS completions
         FROM survey_responses
-        WHERE survey_id = :surveyId AND completed_at BETWEEN :from AND :to
-        GROUP BY DATE_TRUNC(:granularity, completed_at)
+        WHERE survey_id = :surveyId AND occurred_at BETWEEN :from AND :to
+        GROUP BY DATE_TRUNC(:granularity, occurred_at)
         ORDER BY 1
         """, nativeQuery = true)
     List<Object[]> findTimeseries(
@@ -44,4 +49,7 @@ public interface SurveyResponseRepository extends JpaRepository<SurveyResponse, 
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to,
         @Param("granularity") String granularity);
+
+    @Query("SELECT AVG(r.cpi) FROM SurveyResponse r WHERE r.surveyId = :surveyId AND r.eventType = 'COMPLETE'")
+    Double findAvgCpiBySurveyId(@Param("surveyId") UUID surveyId);
 }

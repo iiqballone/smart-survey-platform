@@ -2,9 +2,9 @@ package com.surveybridge.response.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surveybridge.common.exception.FusionIntegrationException;
 import com.surveybridge.config.KafkaConfig;
-import com.surveybridge.common.exception.DynataIntegrationException;
-import com.surveybridge.dynata.dto.DynataWebhookPayload;
+import com.surveybridge.fusion.dto.FusionEventPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -18,13 +18,13 @@ public class ResponseKafkaProducer {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public void publish(DynataWebhookPayload payload) {
+    public void publish(String surveyId, FusionEventPayload payload) {
         try {
             String message = objectMapper.writeValueAsString(payload);
-            kafkaTemplate.send(KafkaConfig.RESPONSE_TOPIC, payload.getSurveyId().toString(), message);
-            log.debug("Published response to Kafka for survey {}", payload.getSurveyId());
+            kafkaTemplate.send(KafkaConfig.RESPONSE_TOPIC, surveyId, message);
+            log.debug("Published Fusion event to Kafka for survey {}", surveyId);
         } catch (JsonProcessingException e) {
-            throw new DynataIntegrationException("Failed to serialize webhook payload", e);
+            throw new FusionIntegrationException("Failed to serialize Fusion event payload", e);
         }
     }
 }

@@ -2,7 +2,7 @@ package com.surveybridge.response.controller;
 
 import com.surveybridge.common.CurrentUserContext;
 import com.surveybridge.common.PagedResult;
-import com.surveybridge.dynata.dto.DynataWebhookPayload;
+import com.surveybridge.fusion.dto.FusionEventPayload;
 import com.surveybridge.response.dto.ResponseDto;
 import com.surveybridge.response.service.ResponseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,21 +29,22 @@ public class ResponseController {
     private final ResponseService responseService;
     private final CurrentUserContext ctx;
 
-    @PostMapping("/api/v1/webhook/dynata")
+    @PostMapping("/api/v1/webhook/fusion")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @Operation(summary = "Receive Dynata webhook (HMAC-signed, no auth required)")
-    public void webhook(@RequestHeader(value = "X-Dynata-Signature", required = false) String signature,
-                        @RequestBody DynataWebhookPayload payload,
-                        HttpServletRequest request) {
+    @Operation(summary = "Receive Fusion event webhook (HMAC-signed, no auth required)")
+    public void fusionWebhook(
+            @RequestHeader(value = "X-Fusion-Signature", required = false) String signature,
+            @RequestBody FusionEventPayload payload,
+            HttpServletRequest request) {
         byte[] body = new byte[0];
         if (request instanceof ContentCachingRequestWrapper wrapper) {
             body = wrapper.getContentAsByteArray();
         }
-        responseService.handleWebhook(signature, body, payload);
+        responseService.handleFusionWebhook(signature, body, payload);
     }
 
     @GetMapping("/api/v1/surveys/{surveyId}/responses")
-    @Operation(summary = "List responses for a survey")
+    @Operation(summary = "List events for a survey")
     public PagedResult<ResponseDto> list(
             @PathVariable UUID surveyId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -51,11 +52,11 @@ public class ResponseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return responseService.getResponses(surveyId, ctx.getClientId(), from, to,
-            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "completedAt")));
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "occurredAt")));
     }
 
     @GetMapping("/api/v1/surveys/{surveyId}/responses/export")
-    @Operation(summary = "Export responses as CSV or Excel")
+    @Operation(summary = "Export events as CSV or Excel")
     public void export(@PathVariable UUID surveyId,
                        @RequestParam(defaultValue = "csv") String format,
                        HttpServletResponse response) throws IOException {

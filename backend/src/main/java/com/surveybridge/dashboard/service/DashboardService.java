@@ -5,7 +5,6 @@ import com.surveybridge.dashboard.dto.DashboardSummaryDto;
 import com.surveybridge.dashboard.dto.TimeSeriesPointDto;
 import com.surveybridge.dashboard.dto.TimeSeriesResponseDto;
 import com.surveybridge.response.repository.SurveyResponseRepository;
-import com.surveybridge.survey.entity.Survey;
 import com.surveybridge.survey.entity.SurveyStatus;
 import com.surveybridge.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,10 +35,10 @@ public class DashboardService {
         long active = surveyRepository.countByClientIdAndStatus(clientId, SurveyStatus.LIVE);
         long totalResponses = responseRepository.countByClientId(clientId);
 
-        List<Survey> surveys = surveyRepository.findAllByClientId(clientId, Pageable.unpaged()).getContent();
-        double avgCompletion = surveys.stream()
-            .filter(s -> s.getTargetResponseCount() > 0)
-            .mapToDouble(s -> (double) s.getReceivedResponseCount() / s.getTargetResponseCount() * 100)
+        double avgCompletion = surveyRepository.findAllByClientId(clientId, Pageable.unpaged())
+            .getContent().stream()
+            .filter(s -> s.getCompletesRequired() > 0)
+            .mapToDouble(s -> (double) s.getCompletedCount() / s.getCompletesRequired() * 100)
             .average().orElse(0);
 
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
@@ -70,11 +69,11 @@ public class DashboardService {
             .stream()
             .filter(s -> s.getStatus() != SurveyStatus.DRAFT)
             .map(s -> {
-                double rate = s.getTargetResponseCount() > 0
-                    ? (double) s.getReceivedResponseCount() / s.getTargetResponseCount() * 100 : 0;
-                return new CompletionRateDto(s.getId(), s.getTitle(),
-                    Math.round(rate * 10.0) / 10.0,
-                    s.getReceivedResponseCount(), s.getTargetResponseCount());
+                double rate = s.getCompletesRequired() > 0
+                    ? Math.round((double) s.getCompletedCount() / s.getCompletesRequired() * 100 * 10.0) / 10.0
+                    : 0;
+                return new CompletionRateDto(s.getId(), s.getTitle(), rate,
+                    s.getCompletedCount(), s.getCompletesRequired());
             })
             .toList();
     }

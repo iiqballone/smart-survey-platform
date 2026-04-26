@@ -1,6 +1,6 @@
 package com.surveybridge.config;
 
-import com.surveybridge.dynata.DynataProperties;
+import com.surveybridge.fusion.FusionProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -9,7 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient dynataWebClient(DynataProperties props) {
+    public WebClient fusionWebClient(FusionProperties props) {
         return WebClient.builder()
             .baseUrl(props.getBaseUrl())
             .defaultHeader("Authorization", "Bearer " + props.getApiKey())

@@ -6,6 +6,6 @@ public record CompletionRateDto(
     UUID surveyId,
     String title,
     double completionRate,
-    int receivedResponseCount,
-    int targetResponseCount
+    int completedCount,
+    int completesRequired
 ) {}

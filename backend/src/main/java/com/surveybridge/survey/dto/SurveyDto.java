@@ -2,21 +2,26 @@ package com.surveybridge.survey.dto;
 
 import com.surveybridge.survey.entity.SurveyStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 public record SurveyDto(
     UUID id,
     UUID clientId,
     String title,
-    String description,
+    String surveyUrl,
+    String fusionSurveyId,
+    String fusionEntryUrl,
+    String country,
+    int completesRequired,
+    int completedCount,
+    int screenoutCount,
+    int loi,
+    BigDecimal cpiMin,
+    BigDecimal cpiMax,
+    String callbackUrl,
     SurveyStatus status,
-    String dynataProjectId,
-    TargetingDto targeting,
-    int targetResponseCount,
-    int receivedResponseCount,
-    List<QuestionDto> questions,
     LocalDateTime createdAt,
     LocalDateTime publishedAt,
     LocalDateTime closedAt

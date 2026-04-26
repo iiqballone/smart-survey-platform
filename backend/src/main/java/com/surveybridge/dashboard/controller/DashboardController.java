@@ -5,6 +5,7 @@ import com.surveybridge.dashboard.dto.CompletionRateDto;
 import com.surveybridge.dashboard.dto.DashboardSummaryDto;
 import com.surveybridge.dashboard.dto.TimeSeriesResponseDto;
 import com.surveybridge.dashboard.service.DashboardService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,11 +25,13 @@ public class DashboardController {
     private final CurrentUserContext ctx;
 
     @GetMapping("/summary")
+    @Operation(summary = "Get dashboard summary")
     public DashboardSummaryDto summary() {
         return dashboardService.getSummary(ctx.getClientId());
     }
 
     @GetMapping("/surveys/{surveyId}/timeseries")
+    @Operation(summary = "Get response time series for a survey")
     public TimeSeriesResponseDto timeSeries(
             @PathVariable UUID surveyId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -38,6 +41,7 @@ public class DashboardController {
     }
 
     @GetMapping("/completion-rates")
+    @Operation(summary = "Get completion rates for all surveys")
     public List<CompletionRateDto> completionRates() {
         return dashboardService.getCompletionRates(ctx.getClientId());
     }
