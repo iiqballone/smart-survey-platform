@@ -2,29 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/common/Badge';
 import { Spinner } from '@/components/common/Spinner';
 import { adminApi } from '@/services/adminApi';
-
-interface DynataJob {
-  dynataProjectId: string;
-  title: string;
-  syncStatus: string;
-  receivedResponseCount: number;
-  targetResponseCount: number;
-}
+import type { FusionJob } from '@/types';
 
 export function DynataMonitor() {
-  const { data: jobs, isPending } = useQuery<DynataJob[]>({
-    queryKey: ['admin', 'dynata', 'jobs'],
-    queryFn: adminApi.dynataJobs,
+  const { data: jobs, isPending } = useQuery<FusionJob[]>({
+    queryKey: ['admin', 'fusion', 'jobs'],
+    queryFn: adminApi.fusionJobs,
     refetchInterval: 30_000,
   });
 
-  const syncColor = (s: string): 'green' | 'red' | 'yellow' =>
-    s === 'SYNCED' ? 'green' : s === 'SYNC_FAILED' ? 'red' : 'yellow';
+  const stateColor = (s: string): 'green' | 'yellow' =>
+    s === 'LIVE' ? 'green' : 'yellow';
 
   return (
     <div>
       <div className="sh">
-        <div className="st">Dynata Monitor</div>
+        <div className="st">Fusion Monitor</div>
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>Auto-refresh every 30s</span>
       </div>
 
@@ -33,7 +26,7 @@ export function DynataMonitor() {
       ) : !jobs || jobs.length === 0 ? (
         <div className="empty">
           <div className="ei">🔌</div>
-          <div className="et">No active Dynata jobs</div>
+          <div className="et">No active Fusion jobs</div>
         </div>
       ) : (
         <div className="tw">
@@ -41,30 +34,30 @@ export function DynataMonitor() {
             <table>
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Dynata ID</th>
+                  <th>Survey</th>
+                  <th>Fusion ID</th>
                   <th>Progress</th>
-                  <th>Responses</th>
-                  <th>Sync status</th>
+                  <th>Completes</th>
+                  <th>State</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => {
-                  const pct = job.targetResponseCount > 0
-                    ? Math.min(100, (job.receivedResponseCount / job.targetResponseCount) * 100)
+                  const pct = job.completesRequired > 0
+                    ? Math.min(100, (job.completedCount / job.completesRequired) * 100)
                     : 0;
                   return (
-                    <tr key={job.dynataProjectId}>
-                      <td><div className="sn">{job.title}</div></td>
-                      <td><span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)' }}>{job.dynataProjectId}</span></td>
+                    <tr key={job.fusionSurveyId}>
+                      <td><div className="sn">{job.surveyTitle}</div></td>
+                      <td><span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)' }}>{job.fusionSurveyId}</span></td>
                       <td>
                         <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
                         <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{pct.toFixed(0)}%</div>
                       </td>
                       <td style={{ color: 'var(--muted)' }}>
-                        {job.receivedResponseCount} / {job.targetResponseCount}
+                        {job.completedCount.toLocaleString()} / {job.completesRequired.toLocaleString()}
                       </td>
-                      <td><Badge label={job.syncStatus.replace('_', ' ')} color={syncColor(job.syncStatus)} /></td>
+                      <td><Badge label={job.state} color={stateColor(job.state)} /></td>
                     </tr>
                   );
                 })}

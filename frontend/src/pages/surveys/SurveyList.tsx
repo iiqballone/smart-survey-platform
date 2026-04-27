@@ -54,6 +54,7 @@ export function SurveyList() {
                 <tr>
                   <th>Survey</th>
                   <th>Status</th>
+                  <th>Country</th>
                   <th>Progress</th>
                   <th>Responses</th>
                   <th>Created</th>
@@ -63,14 +64,14 @@ export function SurveyList() {
               <tbody>
                 {(data?.content ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
                       No surveys found.
                     </td>
                   </tr>
                 ) : (
                   (data?.content ?? []).map((s) => {
-                    const pct = s.targetResponseCount > 0
-                      ? Math.min(100, (s.receivedResponseCount / s.targetResponseCount) * 100)
+                    const pct = s.completesRequired > 0
+                      ? Math.min(100, (s.completedCount / s.completesRequired) * 100)
                       : 0;
                     return (
                       <tr key={s.id}>
@@ -80,16 +81,19 @@ export function SurveyList() {
                               {s.title}
                             </Link>
                           </div>
-                          {s.description && <div className="sm">{s.description}</div>}
+                          {s.fusionSurveyId && (
+                            <div className="sm" style={{ fontFamily: 'monospace' }}>{s.fusionSurveyId}</div>
+                          )}
                         </td>
                         <td><SurveyStatusBadge status={s.status} /></td>
+                        <td style={{ color: 'var(--muted)' }}>{s.country}</td>
                         <td>
                           <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
                           <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{pct.toFixed(0)}%</div>
                         </td>
                         <td style={{ color: 'var(--muted)' }}>
-                          {s.receivedResponseCount.toLocaleString()}
-                          <span style={{ opacity: 0.5 }}> / {s.targetResponseCount.toLocaleString()}</span>
+                          {s.completedCount.toLocaleString()}
+                          <span style={{ opacity: 0.5 }}> / {s.completesRequired.toLocaleString()}</span>
                         </td>
                         <td style={{ color: 'var(--muted)' }}>{new Date(s.createdAt).toLocaleDateString()}</td>
                         <td>

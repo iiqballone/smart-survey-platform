@@ -4,7 +4,7 @@ import { Spinner } from '@/components/common/Spinner';
 import { adminApi } from '@/services/adminApi';
 
 interface HealthComponent { status: 'UP' | 'DOWN' | 'UNKNOWN' }
-interface HealthData { status: 'UP' | 'DOWN'; components: Record<string, HealthComponent> }
+interface HealthData { status: 'UP' | 'DOWN' | 'DEGRADED'; components: Record<string, HealthComponent> }
 
 const statusColor = (s: string): 'green' | 'red' | 'yellow' =>
   s === 'UP' ? 'green' : s === 'DOWN' ? 'red' : 'yellow';

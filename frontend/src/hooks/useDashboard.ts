@@ -9,11 +9,11 @@ export function useDashboardSummary() {
   });
 }
 
-export function useTimeSeries(surveyId: string, from: string, to: string) {
+export function useTimeSeries(surveyId: string, from: string, to: string, granularity: 'day' | 'week' | 'month' = 'day') {
   return useQuery({
-    queryKey: ['dashboard', 'timeseries', surveyId, from, to],
-    queryFn: () => dashboardApi.timeSeries(surveyId, from, to),
-    enabled: !!surveyId,
+    queryKey: ['dashboard', 'timeseries', surveyId, from, to, granularity],
+    queryFn: () => dashboardApi.timeSeries(surveyId, from, to, granularity),
+    enabled: !!surveyId && !!from && !!to,
   });
 }
 

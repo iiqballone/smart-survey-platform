@@ -10,11 +10,11 @@ export const dashboardApi = {
     return api.get<DashboardSummary>('/dashboard/summary').then(r => r.data);
   },
 
-  timeSeries: (_surveyId: string, _from: string, _to: string, _granularity: 'day' | 'week' = 'day') => {
-    if (DEV) return Promise.resolve({ surveyId: _surveyId, data: MOCK_TIMESERIES });
+  timeSeries: (surveyId: string, from: string, to: string, granularity: 'day' | 'week' | 'month' = 'day') => {
+    if (DEV) return Promise.resolve({ surveyId, data: MOCK_TIMESERIES });
     return api.get<{ surveyId: string; data: TimeSeriesPoint[] }>(
-      `/dashboard/surveys/${_surveyId}/timeseries`,
-      { params: { from: _from, to: _to, granularity: _granularity } },
+      `/dashboard/surveys/${surveyId}/timeseries`,
+      { params: { from, to, granularity } },
     ).then(r => r.data);
   },
 

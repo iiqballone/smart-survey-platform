@@ -18,8 +18,8 @@ export function SurveyDetail() {
   if (isPending) return <div className="center-spinner"><Spinner size="lg" /></div>;
   if (!survey)   return <p style={{ color: 'var(--muted)' }}>Survey not found.</p>;
 
-  const pct = survey.targetResponseCount > 0
-    ? Math.min(100, (survey.receivedResponseCount / survey.targetResponseCount) * 100)
+  const pct = survey.completesRequired > 0
+    ? Math.min(100, (survey.completedCount / survey.completesRequired) * 100)
     : 0;
 
   return (
@@ -27,7 +27,9 @@ export function SurveyDetail() {
       <div className="sh">
         <div>
           <div className="st">{survey.title}</div>
-          {survey.description && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{survey.description}</div>}
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
+            {survey.country} · LOI {survey.loi} min · CPI ${survey.cpiMin}–${survey.cpiMax}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canEdit && survey.status === 'DRAFT' && (
@@ -59,21 +61,21 @@ export function SurveyDetail() {
           <div style={{ marginTop: 6 }}><SurveyStatusBadge status={survey.status} /></div>
         </div>
         <div className="kcard">
-          <div className="klbl">Responses</div>
+          <div className="klbl">Completes</div>
           <div className="kval" style={{ fontSize: 20 }}>
-            {survey.receivedResponseCount.toLocaleString()}
-            <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}> / {survey.targetResponseCount.toLocaleString()}</span>
+            {survey.completedCount.toLocaleString()}
+            <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}> / {survey.completesRequired.toLocaleString()}</span>
           </div>
+        </div>
+        <div className="kcard">
+          <div className="klbl">Screenouts</div>
+          <div className="kval" style={{ fontSize: 20 }}>{survey.screenoutCount.toLocaleString()}</div>
         </div>
         <div className="kcard">
           <div className="klbl">Published</div>
           <div style={{ fontSize: 14, color: 'var(--text)', marginTop: 8 }}>
             {survey.publishedAt ? new Date(survey.publishedAt).toLocaleDateString() : '—'}
           </div>
-        </div>
-        <div className="kcard">
-          <div className="klbl">Dynata ID</div>
-          <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text)', marginTop: 8 }}>{survey.dynataProjectId ?? '—'}</div>
         </div>
       </div>
 
@@ -87,53 +89,62 @@ export function SurveyDetail() {
         </div>
       </div>
 
-      {survey.targeting && (
+      <div className="fsec">
+        <div className="fst">Survey details</div>
+        <div className="frow three">
+          <div className="fg">
+            <span className="fl">Country</span>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.country}</span>
+          </div>
+          <div className="fg">
+            <span className="fl">Length of interview</span>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.loi} min</span>
+          </div>
+          <div className="fg">
+            <span className="fl">CPI range</span>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>${survey.cpiMin} – ${survey.cpiMax}</span>
+          </div>
+          <div className="fg">
+            <span className="fl">Target completes</span>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.completesRequired.toLocaleString()}</span>
+          </div>
+          <div className="fg">
+            <span className="fl">Fusion survey ID</span>
+            <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text)' }}>{survey.fusionSurveyId ?? '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      {survey.fusionEntryUrl && (
         <div className="fsec">
-          <div className="fst"><span className="fsi">🎯</span> Targeting</div>
-          <div className="frow three">
-            <div className="fg">
-              <span className="fl">Country</span>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.country}</span>
-            </div>
-            <div className="fg">
-              <span className="fl">Age range</span>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.ageMin}–{survey.targeting.ageMax}</span>
-            </div>
-            <div className="fg">
-              <span className="fl">Gender</span>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.gender}</span>
-            </div>
-            <div className="fg">
-              <span className="fl">Sample size</span>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.sampleSize.toLocaleString()}</span>
-            </div>
-            <div className="fg">
-              <span className="fl">Incidence rate</span>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{survey.targeting.incidenceRate}%</span>
-            </div>
+          <div className="fst">Fusion entry URL</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Share this URL with panel suppliers.</div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              readOnly
+              value={survey.fusionEntryUrl}
+              style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+            />
+            <button
+              className="btn btn-s btn-sm"
+              onClick={() => navigator.clipboard.writeText(survey.fusionEntryUrl!)}
+            >
+              Copy
+            </button>
           </div>
         </div>
       )}
 
-      {survey.questions && survey.questions.length > 0 && (
-        <div>
-          <div className="sh" style={{ marginBottom: 12 }}>
-            <div className="st">Questions ({survey.questions.length})</div>
-          </div>
-          {survey.questions.map((q, i) => (
-            <div key={q.id} className="qcard">
-              <div className="qhead">
-                <div className="qnum">{i + 1}</div>
-                <div className="qrow">
-                  <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{q.text}</span>
-                  <span className="tag">{q.type.replace('_', ' ')}</span>
-                  {q.required && <span style={{ fontSize: 11, color: 'var(--muted)' }}>Required</span>}
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="fsec">
+        <div className="fst">Survey URL</div>
+        <div style={{ marginTop: 8 }}>
+          <input
+            readOnly
+            value={survey.surveyUrl}
+            style={{ width: '100%', fontSize: 12, fontFamily: 'monospace', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

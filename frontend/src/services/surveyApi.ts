@@ -29,10 +29,18 @@ export const surveyApi = {
     if (DEV) {
       const s: Survey = {
         id: String(Date.now()), clientId: 'c1',
-        title: data.title, description: data.description,
-        status: 'DRAFT', receivedResponseCount: 0,
-        targetResponseCount: data.targeting.sampleSize,
-        targeting: data.targeting, createdAt: new Date().toISOString(),
+        title: data.title,
+        surveyUrl: data.surveyUrl,
+        country: data.country,
+        completesRequired: data.completesRequired,
+        completedCount: 0,
+        screenoutCount: 0,
+        loi: data.loi,
+        cpiMin: data.cpiRange.min,
+        cpiMax: data.cpiRange.max,
+        callbackUrl: data.callbackUrl,
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
       };
       localSurveys = [s, ...localSurveys];
       return Promise.resolve(s);
@@ -42,7 +50,16 @@ export const surveyApi = {
 
   update: (id: string, data: Partial<CreateSurveyRequest>) => {
     if (DEV) {
-      localSurveys = localSurveys.map(s => s.id === id ? { ...s, title: data.title ?? s.title, description: data.description ?? s.description } : s);
+      localSurveys = localSurveys.map(s => s.id === id ? {
+        ...s,
+        title:            data.title            ?? s.title,
+        surveyUrl:        data.surveyUrl        ?? s.surveyUrl,
+        callbackUrl:      data.callbackUrl      ?? s.callbackUrl,
+        completesRequired:data.completesRequired ?? s.completesRequired,
+        loi:              data.loi              ?? s.loi,
+        cpiMin:           data.cpiRange?.min    ?? s.cpiMin,
+        cpiMax:           data.cpiRange?.max    ?? s.cpiMax,
+      } : s);
       return Promise.resolve(localSurveys.find(s => s.id === id)!);
     }
     return api.put<Survey>(`/surveys/${id}`, data).then(r => r.data);
@@ -55,7 +72,12 @@ export const surveyApi = {
 
   publish: (id: string) => {
     if (DEV) {
-      localSurveys = localSurveys.map(s => s.id === id ? { ...s, status: 'LIVE' as const, dynataProjectId: `DYN-${Date.now()}`, publishedAt: new Date().toISOString() } : s);
+      localSurveys = localSurveys.map(s => s.id === id ? {
+        ...s, status: 'LIVE' as const,
+        fusionSurveyId: `FS-${Date.now()}`,
+        fusionEntryUrl: `https://fusion.spectrumsurveys.com/start-universal/${Date.now()}`,
+        publishedAt: new Date().toISOString(),
+      } : s);
       return Promise.resolve(localSurveys.find(s => s.id === id)!);
     }
     return api.post<Survey>(`/surveys/${id}/publish`).then(r => r.data);

@@ -1,10 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useNotifStore } from '@/store/notificationStore';
-import type { Notification } from '@/store/notificationStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useNotifications';
+import { notifKeys } from '@/hooks/useNotifications';
+import type { NotificationDto, NotifLevel } from '@/types';
 
-const TYPE_ICON: Record<string, string> = {
-  success: '✅', warning: '⚠️', info: 'ℹ️', error: '❌',
+const TYPE_ICON: Record<NotifLevel, string> = {
+  SUCCESS: '✅',
+  WARNING: '⚠️',
+  INFO:    'ℹ️',
+  ERROR:   '❌',
 };
 
 function timeAgo(iso: string): string {
@@ -19,8 +24,13 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { notifications, markRead, markAllRead, unreadCount } = useNotifStore();
-  const count = unreadCount();
+  const qc = useQueryClient();
+
+  const { data: notifications = [] } = useNotifications();
+  const markRead    = useMarkRead();
+  const markAllRead = useMarkAllRead();
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -30,10 +40,28 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleClick = (n: Notification) => {
-    markRead(n.id);
+  const handleClick = (n: NotificationDto) => {
+    if (!n.read) {
+      markRead.mutate(n.id, {
+        onSuccess: () => {
+          qc.setQueryData<NotificationDto[]>(notifKeys.all, (old) =>
+            old?.map((item) => item.id === n.id ? { ...item, read: true } : item) ?? [],
+          );
+        },
+      });
+    }
     setOpen(false);
     if (n.link) navigate(n.link);
+  };
+
+  const handleMarkAll = () => {
+    markAllRead.mutate(undefined, {
+      onSuccess: () => {
+        qc.setQueryData<NotificationDto[]>(notifKeys.all, (old) =>
+          old?.map((item) => ({ ...item, read: true })) ?? [],
+        );
+      },
+    });
   };
 
   return (
@@ -44,7 +72,7 @@ export function NotificationBell() {
         aria-label="Notifications"
       >
         🔔
-        {count > 0 && <span className="notif-badge">{count}</span>}
+        {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
       </button>
 
       {open && (
@@ -53,10 +81,10 @@ export function NotificationBell() {
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
               Notifications
             </span>
-            {count > 0 && (
+            {unreadCount > 0 && (
               <button
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--accent)' }}
-                onClick={markAllRead}
+                onClick={handleMarkAll}
               >
                 Mark all read
               </button>
@@ -75,13 +103,13 @@ export function NotificationBell() {
                   className={`notif-item${n.read ? '' : ' unread'}`}
                   onClick={() => handleClick(n)}
                 >
-                  <span className="notif-icon">{TYPE_ICON[n.type]}</span>
+                  <span className="notif-icon">{TYPE_ICON[n.type] ?? 'ℹ️'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: 'var(--text)', marginBottom: 2 }}>
                       {n.title}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{n.body}</div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{timeAgo(n.time)}</div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
                   </div>
                   {!n.read && <span className="notif-dot" />}
                 </div>

@@ -1,10 +1,9 @@
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 export type SurveyStatus = 'DRAFT' | 'LIVE' | 'PAUSED' | 'COMPLETED';
-export type QuestionType = 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'RATING' | 'OPEN_TEXT' | 'NPS' | 'MATRIX';
-export type UserRole = 'CLIENT_ADMIN' | 'CLIENT_VIEWER' | 'PLATFORM_ADMIN';
-export type ClientPlan = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
-export type Gender = 'ALL' | 'MALE' | 'FEMALE';
+export type EventType    = 'COMPLETE' | 'SCREENOUT';
+export type UserRole     = 'CLIENT_ADMIN' | 'CLIENT_VIEWER' | 'PLATFORM_ADMIN';
+export type ClientPlan   = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -18,45 +17,27 @@ export interface AuthUser {
 
 // ─── Survey ───────────────────────────────────────────────────────────────────
 
-export interface SurveyTargeting {
-  country: string;
-  ageMin: number;
-  ageMax: number;
-  gender: Gender;
-  sampleSize: number;
-  incidenceRate: number;
-}
-
-export interface QuestionOption {
-  id: string;
-  questionId: string;
-  orderIndex: number;
-  label: string;
-  value: string;
-}
-
-export interface Question {
-  id: string;
-  surveyId: string;
-  orderIndex: number;
-  text: string;
-  type: QuestionType;
-  required: boolean;
-  conditionalLogic?: string;
-  options?: QuestionOption[];
+export interface CpiRange {
+  min: number;
+  max: number;
 }
 
 export interface Survey {
   id: string;
   clientId: string;
   title: string;
-  description: string;
+  surveyUrl: string;
+  fusionSurveyId?: string;
+  fusionEntryUrl?: string;
+  country: string;
+  completesRequired: number;
+  completedCount: number;
+  screenoutCount: number;
+  loi: number;
+  cpiMin: number;
+  cpiMax: number;
+  callbackUrl: string;
   status: SurveyStatus;
-  dynataProjectId?: string;
-  targetResponseCount: number;
-  receivedResponseCount: number;
-  targeting?: SurveyTargeting;
-  questions?: Question[];
   createdAt: string;
   publishedAt?: string;
   closedAt?: string;
@@ -64,34 +45,57 @@ export interface Survey {
 
 export interface CreateSurveyRequest {
   title: string;
-  description: string;
-  targeting: SurveyTargeting;
-  questions: Array<{
-    text: string;
-    type: QuestionType;
-    required: boolean;
-    options?: string[];
-  }>;
+  surveyUrl: string;
+  completesRequired: number;
+  loi: number;
+  country: string;
+  cpiRange: CpiRange;
+  callbackUrl: string;
 }
 
 // ─── Responses ────────────────────────────────────────────────────────────────
 
-export interface Answer {
-  questionId: string;
-  questionText: string;
-  value: string;
-}
-
 export interface SurveyResponse {
   id: string;
   surveyId: string;
-  dynataRespondentId: string;
-  country: string;
-  ageGroup: number;
-  gender: string;
-  completedAt: string;
-  durationSeconds: number;
-  answers: Answer[];
+  respondentId: string;
+  fusionSurveyId: string;
+  eventType: EventType;
+  cpi?: number;
+  occurredAt: string;
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export interface TimeSeriesPoint {
+  period: string;
+  responses: number;
+  completions: number;
+}
+
+export interface SurveyAnalytics {
+  surveyId: string;
+  completedCount: number;
+  screenoutCount: number;
+  completesRequired: number;
+  completionRate: number;
+  screenoutRate: number;
+  averageCpi?: number;
+  trend: TimeSeriesPoint[];
+}
+
+export interface SurveyPerformance {
+  id: string;
+  title: string;
+  completedCount: number;
+  completesRequired: number;
+  completionRate: number;
+  status: SurveyStatus;
+}
+
+export interface CrossSurveyAnalytics {
+  responseTrend: TimeSeriesPoint[];
+  surveyPerformance: SurveyPerformance[];
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -104,17 +108,42 @@ export interface DashboardSummary {
   responsesThisMonth: number;
 }
 
-export interface TimeSeriesPoint {
-  date: string;
-  count: number;
-}
-
 export interface CompletionRate {
   surveyId: string;
   title: string;
   completionRate: number;
-  receivedResponseCount: number;
-  targetResponseCount: number;
+  completedCount: number;
+  completesRequired: number;
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotifLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+
+export interface NotificationDto {
+  id: string;
+  type: NotifLevel;
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// ─── Team ─────────────────────────────────────────────────────────────────────
+
+export type TeamRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  role: TeamRole;
+  createdAt: string;
+}
+
+export interface InviteRequest {
+  email: string;
+  role: 'ADMIN' | 'MEMBER' | 'VIEWER';
 }
 
 // ─── Clients (Admin) ──────────────────────────────────────────────────────────
@@ -130,13 +159,14 @@ export interface Client {
   createdAt: string;
 }
 
-export interface ClientUser {
-  id: string;
-  clientId: string;
-  keycloakUserId: string;
-  email: string;
-  role: 'CLIENT_ADMIN' | 'CLIENT_VIEWER';
-  createdAt: string;
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export interface FusionJob {
+  fusionSurveyId: string;
+  surveyTitle: string;
+  state: 'LIVE' | 'PAUSED';
+  completedCount: number;
+  completesRequired: number;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
